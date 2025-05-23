@@ -1,0 +1,10 @@
+/* src/styles.css */
+@import "tailwindcss/preflight";
+@import "tailwindcss/index";
+@import "tailwindcss/utilities";
+
+/* Optional custom theme overrides */
+@theme {
+  --color-primary: #1fb6ff;
+  --font-sans: 'Graphik', sans-serif;
+}
