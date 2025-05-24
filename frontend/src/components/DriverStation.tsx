@@ -1,38 +1,49 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { useTelemetry } from "@/lib/TelemetryContext";
 
 export default function DriverStation() {
-  // === Placeholder state ===
-  const connected = true;
-  const armed = false;
-  const mode = "Stabilize";
-  const rssi = "92%";
-  const ping = "38ms";
-  const videoLatency = "180ms";
-  const recording = true;
+  const {
+    connected,
+    armed,
+    mode,
+    rssi,
+    ping,
+    videoLatency,
+    recording,
+  } = useTelemetry();
+
   const [time, setTime] = useState(new Date().toLocaleTimeString());
 
-  // === Placeholder handlers ===
-  const sendArm = () => { /* TODO: send ARM command via REST */ };
-  const sendDisarm = () => { /* TODO: send DISARM command */ };
-  const sendHold = () => { /* TODO: set ALT_HOLD mode */ };
-  const sendRTL = () => { /* TODO: return to launch */ };
-  const sendAbort = () => { /* TODO: emergency abort */ };
+  // === Command Sender ===
+  const sendCommand = (action: string) => {
+    fetch("http://localhost:8000/api/command/" + action, { method: "POST" })
+      .then(res => res.json())
+      .then(data => {
+        console.log(`[DriverStation] Command '${action}' acknowledged:`, data);
+      })
+      .catch(err => console.error(`[DriverStation] Command '${action}' failed`, err));
+  };
+
+  const sendArm = () => sendCommand("arm");
+  const sendDisarm = () => sendCommand("disarm");
+  const sendHold = () => sendCommand("hold_alt");
+  const sendRTL = () => sendCommand("rtl");
+  const sendAbort = () => sendCommand("abort");
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const clock = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
     }, 1000);
-
-    return () => clearInterval(interval);
+    return () => clearInterval(clock);
   }, []);
 
   return (
-    <div className="fixed bottom-0 left-0 w-full h-[90px] bg-zinc-900 border-t border-zinc-800 z-50 shadow-xl text-sm font-mono">
-      <div className="h-full w-full flex items-center justify-between text-zinc-400" style={{ paddingLeft: "2rem", paddingRight: "2rem" }}>
+    <div className="fixed bottom-0 left-0 w-full h-[90px] bg-zinc-800 border-t border-zinc-800 z-50 shadow-xl text-sm font-mono">
+      <div className="h-full w-full flex items-center justify-between text-zinc-400 px-8">
 
         {/* === Status === */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 !px-8">
           <div className="text-white">
             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${connected ? "bg-green-500" : "bg-red-500"}`} />
             {connected ? "Connected" : "Disconnected"}
@@ -41,8 +52,7 @@ export default function DriverStation() {
           <div>Mode: <span className="text-blue-400">{mode}</span></div>
         </div>
 
-        {/* Divider */}
-        <div className="border-l border-zinc-700 h-6 mx-4"></div>
+        <div className="border-l border-zinc-700 h-6 mx-4" />
 
         {/* === Controls === */}
         <div className="flex gap-2">
@@ -52,8 +62,7 @@ export default function DriverStation() {
           <Button variant="outline" onClick={sendRTL}>RTL</Button>
         </div>
 
-        {/* Divider */}
-        <div className="border-l border-zinc-700 h-6 mx-4"></div>
+        <div className="border-l border-zinc-700 h-6 mx-4" />
 
         {/* === Link Info === */}
         <div className="flex items-center gap-6">
@@ -62,24 +71,24 @@ export default function DriverStation() {
           <div>Video: <span className="text-white">{videoLatency}</span></div>
         </div>
 
-        {/* Divider */}
-        <div className="border-l border-zinc-700 h-6 mx-4"></div>
+        <div className="border-l border-zinc-700 h-6 mx-4" />
 
         {/* === Time + Record === */}
         <div className="flex items-center gap-4 text-white">
-          <div>time: {time}</div>
-          <div className={recording ? "text-red-500 font-bold" : "text-zinc-400"}>{recording ? "● REC" : "—"}</div>
+          <div>Time: {time}</div>
+          <div className={recording ? "text-red-500 font-bold" : "text-zinc-400"}>
+            {recording ? "● REC" : "—"}
+          </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-l border-zinc-700 h-6 mx-4"></div>
+        <div className="border-l border-zinc-700 h-6 mx-4" />
 
         {/* === Emergency Abort === */}
         <div>
           <Button
             variant="destructive"
             onClick={sendAbort}
-            className="text-white font-bold px-6 py-2 shadow-lg"
+            className="text-white font-bold !px-8 py-2 shadow-lg"
           >
             ABORT
           </Button>
