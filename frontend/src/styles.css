@@ -8,3 +8,24 @@
   --color-primary: #1fb6ff;
   --font-sans: 'Graphik', sans-serif;
 }
+
+/* Dark scrollbar */
+.scrollbar-dark::-webkit-scrollbar {
+  width: 12px;
+  height: 81px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background-color: #888;
+}

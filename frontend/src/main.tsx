@@ -4,7 +4,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
 import './styles.css';
 import {App} from './App.tsx';
 
-import Dashboard from "@/components/pages/Dashboard.tsx";
+import {Dashboard} from "@/components/pages/Dashboard.tsx";
 import Telemetry from "@/components/pages/Telemetry";
 import Mission from "@/components/pages/Mission";
 import Manual from "@/components/pages/Manual";
