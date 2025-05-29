@@ -1,9 +1,14 @@
-import type { ReactNode } from "react";
+import type {ReactNode} from "react";
 
-export default function PageContainer({ children }: { children: ReactNode }) {
+export default function PageContainer({children}: { children: ReactNode }) {
   return (
-    <div className="w-full overflow-hidden">
-      <div className="max-w-none !px-20 !py-6 mx-auto w-full">{children}</div>
+    <div
+      className="absolute top-[24px] left-[80px] right-0 bottom-[240px] overflow-hidden"
+    >
+      <div className="w-full h-full overflow-auto bg-zinc-950 text-zinc-200 font-mono px-8 py-8">
+        {children}
+      </div>
     </div>
   );
 }
+

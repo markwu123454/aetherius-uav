@@ -6,7 +6,7 @@ import {App} from './App.tsx';
 
 import {Dashboard} from "@/components/pages/Dashboard.tsx";
 import Telemetry from "@/components/pages/Telemetry";
-import Mission from "@/components/pages/Mission";
+import {MissionPlanner as Mission} from "@/components/pages/Mission";
 import Manual from "@/components/pages/Manual";
 import Logs from "@/components/pages/Logs";
 import Settings from "@/components/pages/Settings";

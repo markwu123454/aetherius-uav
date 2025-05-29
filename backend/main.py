@@ -1,14 +1,35 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+from datetime import datetime
 import asyncio
 import random
-from datetime import datetime
+import os
+import csv
+import atexit
+from process_mission import process_mission
+from mavlink_interface import MavlinkInterface
 
-app = FastAPI()
+telemetry_log = []
+recording_enabled = True
+result = None  # global placeholder
+mission_data = None
+ats_mission_data = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    asyncio.create_task(simulate_drone())
+    yield
+    # Shutdown logic (if any)
+
+
+app = FastAPI(lifespan=lifespan)
 
 log_counter = 0  # top-level, above add_log()
 
+# TODO: Remember to implement
 drone_state = {
     "armed": False,
     "mode": "Stabilize",
@@ -18,7 +39,7 @@ drone_state = {
     "videoLatency": "--ms",
     "gps": {"lat": 0, "lon": 0, "sats": 0, "hdop": 0.0},
     "battery": {"voltage": 0, "current": 0, "percent": 0},
-    "uav_connected": False,
+    "uav_connected": True,
 }
 
 log_entries = []
@@ -33,6 +54,38 @@ app.add_middleware(
 )
 
 
+def write_csv_log(data, prefix):
+    return # TODO: delete this during prod
+    if not data:
+        print(f"[Shutdown] No {prefix} data to save.")
+        return
+
+    # Ensure subdirectory exists
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Create full path
+    filename = os.path.join(log_dir, f"{prefix}_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+    print(f"[Shutdown] Saving {prefix} to {filename}...")
+
+    # Write CSV
+    with open(filename, mode="w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
+
+    print(f"[Shutdown] {prefix.capitalize()} saved.")
+
+
+def save_telemetry_to_csv():
+    add_log("Exiting backend", importance="major")
+    write_csv_log(telemetry_log, "telemetry")
+    write_csv_log(log_entries, "logs")
+
+
+atexit.register(save_telemetry_to_csv)
+
+
 def add_log(message: str, importance: str = "minor", severity: str = "info"):
     global log_counter
     timestamp = datetime.now().strftime("%H:%M:%S")
@@ -44,11 +97,10 @@ def add_log(message: str, importance: str = "minor", severity: str = "info"):
         "severity": severity,
     }
     log_counter += 1
-    print(f"[LOG] New log added: {entry}")
+    # print(f"[LOG] New log added: {entry}")
     log_entries.insert(0, entry)
     if len(log_entries) > 1000:
         log_entries.pop()
-
 
 
 # === Background simulation task ===
@@ -71,14 +123,9 @@ async def simulate_drone():
         drone_state["ping"] = f"{random.randint(20, 120)}ms"
         drone_state["videoLatency"] = f"{random.randint(50, 300)}ms"
 
-        #add_log("Telemetry updated")
+        # add_log("Telemetry updated")
 
-        await asyncio.sleep(1)  # update every second
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(simulate_drone())
+        await asyncio.sleep(random.choice(range(3)))  # update every second
 
 
 # === Basic REST Endpoints ===
@@ -122,6 +169,35 @@ def get_logs():
     return {"logs": log_entries}
 
 
+@app.post("/api/mission/process")
+async def upload_mission(mission: dict):
+    global mission_data, result
+    mission_data = mission
+    add_log("Mission uploaded")
+    result = process_mission(mission_data)
+    return JSONResponse(content={"result": "Mission received", "analysis": result})
+
+
+@app.get("/api/mission/process")
+async def get_mission():
+    global result
+    if result is None:
+        return JSONResponse(status_code=404, content={"error": "No mission processed yet"})
+    return result
+
+
+@app.get("/api/mission/autosave")
+def get_autosave():
+    add_log("Autosave loaded")
+    return ats_mission_data
+@app.post("/api/mission/autosave")
+async def save_autosave(mission: dict):
+    global ats_mission_data
+    ats_mission_data = mission
+    add_log("Autosave updated")
+    return JSONResponse(content={"result": "Autosave updated"})
+
+
 # === WebSocket for real-time telemetry and control ===
 @app.websocket("/ws/telemetry")
 async def telemetry_socket(websocket: WebSocket):
@@ -141,6 +217,25 @@ async def telemetry_socket(websocket: WebSocket):
                 "logs": new_logs
             })
 
+            # Log telemetry snapshot if recording
+            if recording_enabled:
+                telemetry_log.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "lat": drone_state["gps"]["lat"],
+                    "lon": drone_state["gps"]["lon"],
+                    "sats": drone_state["gps"]["sats"],
+                    "hdop": drone_state["gps"]["hdop"],
+                    "voltage": drone_state["battery"]["voltage"],
+                    "current": drone_state["battery"]["current"],
+                    "percent": drone_state["battery"]["percent"],
+                    "rssi": drone_state["rssi"],
+                    "ping": drone_state["ping"],
+                    "videoLatency": drone_state["videoLatency"],
+                    "mode": drone_state["mode"],
+                    "armed": drone_state["armed"]
+                    # TODO: sync with video frame if recording
+                })
+
             try:
                 msg = await asyncio.wait_for(websocket.receive_json(), timeout=0.01)
                 await process_client_command(msg)
@@ -152,6 +247,10 @@ async def telemetry_socket(websocket: WebSocket):
     except WebSocketDisconnect:
         print("[WebSocket] Disconnected")
 
+
+@app.get("/api/telemetry/log")
+def get_telemetry_log():
+    return {"telemetry": telemetry_log}
 
 
 # === Placeholder for future command handler ===

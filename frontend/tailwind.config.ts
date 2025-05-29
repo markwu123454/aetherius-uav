@@ -17,8 +17,8 @@ const config = {
         'gray-light': '#d3dce6',
       },
       fontFamily: {
-        sans: ['Graphik', 'sans-serif'],
-        serif: ['Merriweather', 'serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular'],
       },
       spacing: {
         '8xl': '96rem',

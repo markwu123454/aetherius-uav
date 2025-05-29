@@ -12,8 +12,8 @@ import {
 const items = [
   { icon: Home, label: "Dashboard", path: "/home" },
   { icon: BarChart2, label: "Telemetry", path: "/telemetry" },
-  { icon: Map, label: "Mission", path: "/mission" },
-  { icon: Gamepad, label: "Manual", path: "/manual" },
+  { icon: Map, label: "Mission planner", path: "/mission" },
+  { icon: Gamepad, label: "Mission control", path: "/manual" },
   { icon: FileText, label: "Logs", path: "/logs" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
@@ -31,7 +31,7 @@ export default function Sidebar() {
                 cn(
                   "flex items-center justify-center !p-2 rounded-lg transition-colors",
                   "hover:bg-zinc-800",
-                  isActive ? "bg-zinc-800 text-white" : "text-zinc-400"
+                  isActive ? "bg-zinc-800 !text-zinc-300" : "!text-zinc-400"
                 )
               }
             >
@@ -43,7 +43,7 @@ export default function Sidebar() {
           </div>
         ))}
 
-        <hr className="!w-12 border-t border-zinc-400 my-3" />
+        <hr className="!w-12 border-t !border-zinc-400 my-3" />
 
         {/* second group (after divider) */}
         {items.slice(4).map(({ icon: Icon, path, label }) => (
@@ -54,7 +54,7 @@ export default function Sidebar() {
                 cn(
                   "flex items-center justify-center !p-2 rounded-lg transition-colors",
                   "hover:bg-zinc-800",
-                  isActive ? "bg-zinc-800 text-zinc-300" : "text-zinc-400"
+                  isActive ? "bg-zinc-800 !text-zinc-300" : "!text-zinc-400"
                 )
               }
             >

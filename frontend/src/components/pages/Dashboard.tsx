@@ -5,7 +5,7 @@ import {MapContainer, TileLayer, Marker} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const uavPosition = [33.9811533, -117.8395419]; // TODO: change to actual waypoints
+const uavPosition = [34.029758,-117.7929415]; // TODO: change to actual waypoints
 
 export function Dashboard() {
   const {gps, battery, mode, armed, logs} = useTelemetry();
@@ -29,110 +29,118 @@ export function Dashboard() {
 
   return (
     <PageContainer>
-      <div className='bg-zinc-950 text-zinc-200 font-mono !px-8 !py-8 overflow-hidden'>
-        <h1 className='text-4xl font-bold !mb-8 text-white'>Dashboard</h1>
+  <div className="w-full h-full overflow-auto bg-zinc-950 text-zinc-200 font-mono !px-8 !py-8">
+    <h1 className="text-4xl font-bold mb-8 text-white">Dashboard</h1>
 
-        <div className='grid grid-cols-1 lg:grid-cols-[3fr_2fr] !gap-8'>
-          <div className='grid grid-cols-1 md:grid-cols-2 !gap-6 content-start'>
-            <Card className='bg-zinc-900 shadow-lg'>
-              <CardHeader className='!p-6'>
-                <CardTitle>🛰️ GPS</CardTitle>
-              </CardHeader>
-              <CardContent className='!p-6 space-y-2 text-base'>
-                <p>Lat/Lon: <span className='font-mono'>{gps.lat}, {gps.lon}</span></p>
-                <p>Sats: {gps.sats}</p>
-                <p>HDOP: {gps.hdop}</p>
-              </CardContent>
-            </Card>
+    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
+      {/* Left Column (Info Cards + Logs) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* GPS */}
+        <Card className="bg-zinc-900 shadow-lg h-full">
+          <CardHeader className="!p-2">
+            <CardTitle>🛰️ GPS</CardTitle>
+          </CardHeader>
+          <CardContent className="!p-6 space-y-2 text-base">
+            <p>Lat/Lon: <span className="font-mono">{gps.lat}, {gps.lon}</span></p>
+            <p>Sats: {gps.sats}</p>
+            <p>HDOP: {gps.hdop}</p>
+          </CardContent>
+        </Card>
 
-            <Card className='bg-zinc-900 shadow-lg'>
-              <CardHeader className='!p-6'>
-                <CardTitle>📈 Basic Flight Data</CardTitle>
-              </CardHeader>
-              <CardContent className='!p-6 space-y-2 text-base'>
-                <p>Altitude: -- m</p>
-                <p>Airspeed: -- m/s</p>
-                <p>Pitch: --°</p>
-                <p>Roll: --°</p>
-                {/* TODO: Replace with actual telemetry, and remember to add to telemetrycontext.tsx and main.py */}
-              </CardContent>
-            </Card>
+        {/* Basic Flight Data */}
+        <Card className="bg-zinc-900 shadow-lg h-full">
+          <CardHeader className="!p-6">
+            <CardTitle>📈 Basic Flight Data</CardTitle>
+          </CardHeader>
+          <CardContent className="!p-6 !space-y-2 text-base">
+            <p>Altitude: -- m</p>
+            <p>Airspeed: -- m/s</p>
+            <p>Pitch: --°</p>
+            <p>Roll: --°</p>
+          </CardContent>
+        </Card>
 
-            <Card className='bg-zinc-900 shadow-lg'>
-              <CardHeader className='!p-6'>
-                <CardTitle>🧭 Flight Status</CardTitle>
-              </CardHeader>
-              <CardContent className='!p-6 space-y-2 text-base'>
-                <p>Mode: <span className='text-white font-medium'>{mode}</span></p>
-                <p>Status: <span
-                  className={`font-bold ${armed ? 'text-green-400' : 'text-red-400'}`}>{armed ? 'ARMED' : 'DISARMED'}</span>
-                </p>
-              </CardContent>
-            </Card>
+        {/* Flight Status */}
+        <Card className="bg-zinc-900 shadow-lg h-full">
+          <CardHeader className="p-6">
+            <CardTitle>🧭 Flight Status</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-2 text-base">
+            <p>Mode: <span className="text-white font-medium">{mode}</span></p>
+            <p>Status: <span className={`font-bold ${armed ? 'text-green-400' : 'text-red-400'}`}>{armed ? 'ARMED' : 'DISARMED'}</span></p>
+          </CardContent>
+        </Card>
 
-            <Card className='bg-zinc-900 shadow-lg'>
-              <CardHeader className='!p-6'>
-                <CardTitle>⚡ Battery</CardTitle>
-              </CardHeader>
-              <CardContent className='!p-6 space-y-2 text-base'>
-                <p>Voltage: {battery.voltage} V</p>
-                <p>Current: {battery.current} A</p>
-                <p>Charge: {battery.percent}%</p>
-              </CardContent>
-            </Card>
+        {/* Battery */}
+        <Card className="bg-zinc-900 shadow-lg h-full">
+          <CardHeader className="p-6">
+            <CardTitle>⚡ Battery</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-2 text-base">
+            <p>Voltage: {battery.voltage} V</p>
+            <p>Current: {battery.current} A</p>
+            <p>Charge: {battery.percent}%</p>
+          </CardContent>
+        </Card>
 
-            <Card className='bg-zinc-900 shadow-lg col-span-2 flex flex-col'>
-              <CardHeader className='!p-6'>
-                <CardTitle>🧾 Condensed Logs</CardTitle>
-              </CardHeader>
-              <CardContent className='!p-0'>
-                <div className='scrollbar-dark !p-6 space-y-1 text-sm text-zinc-300 overflow-y-auto max-h-40'>
-                  {filteredLogs.length === 0 ? (
-                    <p className='italic text-zinc-500'>No relevant logs</p>
-                  ) : (
-                    filteredLogs.slice(0, 20).map((log, idx) => (
-                      <p
-                        key={idx}
-                        className={
-                          `${log.importance === 'critical' ? 'font-bold my-2' : log.importance === 'major' ? 'font-bold' : ''}`
-                        }
-                      >
-                        [{log.timestamp}] <span
-                        className={`${severityColor(log.severity)} inline-block w-[80px]`}>{log.severity.toUpperCase()}</span>: {log.message}
-                      </p>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className='bg-zinc-900 shadow-lg h-full'>
-            <CardHeader className='!p-6'>
-              <CardTitle>🗺️ Mini Map</CardTitle>
-            </CardHeader>
-            <CardContent className='!p-6 h-[550px]'>
-              <MapContainer
-                center={uavPosition}
-                zoom={15}
-                style={{height: '100%', width: '100%', borderRadius: '0.5rem'}}
-              >
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-                />
-                <Marker
-                  position={uavPosition}
-                  icon={L.icon({
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41]
-                  })}
-                />
-              </MapContainer>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Logs */}
+        <Card className="bg-zinc-900 shadow-lg col-span-2 flex flex-col h-full">
+          <CardHeader className="p-6">
+            <CardTitle>🧾 Condensed Logs</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="scrollbar-dark p-6 space-y-1 text-sm text-zinc-300 overflow-y-auto max-h-40">
+              {filteredLogs.length === 0 ? (
+                <p className="italic text-zinc-500">No relevant logs</p>
+              ) : (
+                filteredLogs.slice(0, 20).map((log, idx) => (
+                  <p
+                    key={idx}
+                    className={
+                      `${log.importance === 'critical' ? 'font-bold my-2' :
+                        log.importance === 'major' ? 'font-bold' : ''}`
+                    }
+                  >
+                    [{log.timestamp}]{" "}
+                    <span className={`${severityColor(log.severity)} inline-block w-[80px]`}>
+                      {log.severity.toUpperCase()}
+                    </span>: {log.message}
+                  </p>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </PageContainer>
+
+      {/* Right Column (Mini Map) */}
+      <Card className="bg-zinc-900 shadow-lg h-full">
+        <CardHeader className="p-6">
+          <CardTitle>🗺️ Mini Map</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 h-[550px]">
+          <MapContainer
+            center={uavPosition}
+            zoom={15}
+            style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+          >
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+            />
+            <Marker
+              position={uavPosition}
+              icon={L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+              })}
+            />
+          </MapContainer>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+</PageContainer>
+
   );
 }

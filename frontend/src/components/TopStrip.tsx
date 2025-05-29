@@ -61,7 +61,7 @@ export default function TopStrip() {
     <div
       className={`fixed top-0 left-0 w-full h-6 ${bgColor} text-zinc-400 text-xs font-mono px-4 flex items-center gap-4 z-50 border-b border-zinc-700 transition-colors`}
     >
-      <span className="text-white">Aetherius GCS · Version 0.1.0</span>
+      <span className="text-zinc-400">Aetherius GCS · Version 0.1.0</span>
       {statusMessages.map((msg, i) => {
         const isAcknowledged = acknowledged.includes(msg.label);
         const color = {
