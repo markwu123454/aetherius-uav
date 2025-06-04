@@ -10,8 +10,8 @@ a detailed flight path with metadata.
 import math
 from typing import List, Dict, Union, NamedTuple
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+import ast
+
 
 
 class LineSeg(NamedTuple):
@@ -25,7 +25,6 @@ class LineSeg(NamedTuple):
     start: np.ndarray
     end: np.ndarray
     alt: float
-
 
 class ArcSeg(NamedTuple):
     """
@@ -45,8 +44,6 @@ class ArcSeg(NamedTuple):
     direction: int
     alt: float
 
-
-# A segment can be either a line or an arc
 Segment = Union[LineSeg, ArcSeg]
 
 
@@ -99,8 +96,7 @@ def shortest(a: float, b: float) -> float:
     return diff
 
 
-def build_path_geometry(waypoints: List[Dict[str, float]], loiter_radius: float) -> Dict[
-    str, Union[float, List[Segment]]]:
+def build_path_geometry(waypoints: List[Dict[str, float]], loiter_radius: float) -> Dict[str, Union[float, List[Segment]]]:
     """
     Build a smooth flight path through a series of waypoints, using line segments
     and circular arcs that respect a minimum turning radius.
@@ -200,11 +196,7 @@ def build_path_geometry(waypoints: List[Dict[str, float]], loiter_radius: float)
     return {"lat0": lat0, "lon0": lon0, "segments": segments}
 
 
-def sample_geometry(
-        geom: Dict[str, Union[float, List[Segment]]],
-        speed_mps: float,
-        dt: float = 0.2
-) -> List[Dict[str, float]]:
+def sample_geometry(geom: Dict[str, Union[float, List[Segment]]],speed_mps: float,dt: float = 0.2) -> List[Dict[str, float]]:
     """
     Sample the abstract geometry into discrete points based on speed and
     time delta.
@@ -247,6 +239,71 @@ def sample_geometry(
     return out_points
 
 
+def extract_callable_methods_from_file(code: str, filename: str):
+    print(f"[extractor] Parsing file: {filename}")
+    print(f"[extractor] Raw code:\n{code[:300]}")  # limit to 300 chars for readability
+
+    logic_entries = []
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        print(f"[extractor] SyntaxError in {filename}: {e}")
+        return [{"file": filename, "class": "?", "method": "?", "parameters": [], "error": str(e)}]
+
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            print(f"[extractor] Found class: {node.name}")
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef):
+                    print(f"[extractor] └── Method: {item.name}")
+                    if item.name == "__init__":
+                        continue
+                    arg_names = [arg.arg for arg in item.args.args]
+                    if arg_names and arg_names[0] == "self":
+                        arg_names = arg_names[1:]
+
+                    logic_entries.append({
+                        "file": filename,
+                        "class": node.name,
+                        "method": item.name,
+                        "parameters": arg_names
+                    })
+
+        elif isinstance(node, ast.FunctionDef):
+            print(f"[extractor] Found top-level function: {node.name}")
+            arg_names = [arg.arg for arg in node.args.args if arg.arg != "self"]
+            logic_entries.append({
+                "file": filename,
+                "class": "Global",
+                "method": node.name,
+                "parameters": arg_names
+            })
+
+    print(f"[extractor] Extracted entries: {logic_entries}")
+    return logic_entries
+
+
+def validate_processed_mission(mission: Dict,result: List[Dict]) -> List[str]:
+    """
+    Performs validation checks on the processed mission result.
+    Returns a list of error messages if issues are detected.
+    """
+    errors = []
+
+    #print(mission)
+    #print(result)
+
+    for waypoint in mission.get("waypoints", []):
+        if waypoint["alt"] > 122:
+            errors.append(f"waypoint {waypoint['name']}(alt: {waypoint["alt"]} meters) exceeds maximum altitude of 400 feet.")
+
+    if not isinstance(mission.get("cruise_speed", 10.0), (int, float)) or mission.get("cruise_speed", 10.0) <= 0:
+        errors.append("Cruise speed must be a positive number.")
+
+    return errors
+
+
 def process_mission(mission: Dict) -> Dict[str, Union[str, float, int, List]]:
     """
     High-level mission processing: builds and samples the flight path,
@@ -262,6 +319,8 @@ def process_mission(mission: Dict) -> Dict[str, Union[str, float, int, List]]:
     cruise_kmh = mission.get("cruise_speed", 10.0)
     loiter_radius = mission.get("loiter_radius", 30.0)
 
+    errors = []
+
     # Convert speed to m/s
     speed_mps = cruise_kmh * 1000.0 / 3600.0
 
@@ -275,7 +334,6 @@ def process_mission(mission: Dict) -> Dict[str, Union[str, float, int, List]]:
     # Build geometry and sample
     geometry = build_path_geometry(wps, loiter_radius)
     sampled = sample_geometry(geometry, speed_mps)
-    # visualize_geometry(geometry)
 
     # Prepend exact first waypoint
     first_wp = wps[0]
@@ -292,50 +350,15 @@ def process_mission(mission: Dict) -> Dict[str, Union[str, float, int, List]]:
 
     total_km = sum(dist3d(a, b) for a, b in zip(flight_path, flight_path[1:]))
     est_min = (total_km / cruise_kmh * 60.0) if cruise_kmh > 0 else 0.0
-    return {"status": "processed", "waypoint_count": len(wps),
-            "total_distance_km": round(total_km, 2), "estimated_time_min": round(est_min, 1),
-            "errors": [], "flight_path": flight_path}
 
+    available_logic = []
+    for filename, code in mission.get("logic_files", {}).items():
+        available_logic.extend(extract_callable_methods_from_file(code, filename))
 
-def visualize_geometry(
-        geom: Dict[str, Union[float, List['Segment']]]
-) -> None:
-    """
-    Visualizes abstract path geometry, coloring segments from red to purple
-    by sweeping hue from 0° to 300° in HSV color space.
-    Args:
-        geom: Dictionary from build_path_geometry.
-    """
-    segments = geom['segments']
-    num_segments = len(segments)
-
-    fig, ax = plt.subplots()
-
-    for i, seg in enumerate(segments):
-        # Interpolate hue from 0° (red) to 300° (purple)
-        hue_deg = 0 + (300 * i / (num_segments - 1)) if num_segments > 1 else 0
-        rgb_color = mcolors.hsv_to_rgb((hue_deg / 360, 1.0, 1.0))
-
-        if isinstance(seg, LineSeg):
-            xs = [seg.start[0], seg.end[0]]
-            ys = [seg.start[1], seg.end[1]]
-            ax.plot(xs, ys, color=rgb_color, linewidth=2)
-        else:
-            start, end = seg.start_ang, seg.end_ang
-            if seg.direction > 0:
-                if end < start:
-                    end += 360
-                angles = np.linspace(start, end, num=200)
-            else:
-                if start < end:
-                    start += 360
-                angles = np.linspace(start, end, num=200)
-            radians = np.radians(angles)
-            xs = seg.center[0] + seg.radius * np.cos(radians)
-            ys = seg.center[1] + seg.radius * np.sin(radians)
-            ax.plot(xs, ys, color=rgb_color, linewidth=2)
-
-    ax.set_aspect('equal', 'box')
-    ax.set_xlabel('X (m)')
-    ax.set_ylabel('Y (m)')
-    plt.show()
+    return {"status": "processed",
+            "waypoint_count": len(wps),
+            "total_distance_km": round(total_km, 2),
+            "estimated_time_min": round(est_min, 1),
+            "errors": errors + validate_processed_mission(mission, sampled),
+            "flight_path": flight_path,
+            "available_logic": available_logic}

@@ -12,9 +12,11 @@
   "dependencies": {
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tailwindcss/vite": "^4.1.7",
+    "cesium": "^1.129.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
@@ -24,6 +26,7 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.6.0",
     "recharts": "^2.15.3",
+    "resium": "^1.19.0-beta.1",
     "tailwind-merge": "^3.3.0",
     "tailwind-variants": "^1.0.0",
     "tailwindcss-animate": "^1.0.7"
@@ -46,6 +49,7 @@
     "tailwindcss": "^4.1.7",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-cesium": "^1.2.23"
   }
 }

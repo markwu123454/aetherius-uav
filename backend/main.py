@@ -171,16 +171,16 @@ def get_logs():
 
 @app.post("/api/mission/process")
 async def upload_mission(mission: dict):
-    global mission_data, result
+    global mission_data, ats_mission_data, result
     mission_data = mission
-    add_log("Mission uploaded")
+    ats_mission_data = mission  # autosave here
+    add_log("Mission uploaded and autosaved")
     result = process_mission(mission_data)
     return JSONResponse(content={"result": "Mission received", "analysis": result})
 
 
 @app.get("/api/mission/process")
-async def get_mission():
-    global result
+async def get_mission_result():
     if result is None:
         return JSONResponse(status_code=404, content={"error": "No mission processed yet"})
     return result
@@ -188,14 +188,10 @@ async def get_mission():
 
 @app.get("/api/mission/autosave")
 def get_autosave():
+    if ats_mission_data is None:
+        return JSONResponse(status_code=404, content={"error": "No autosave found"})
     add_log("Autosave loaded")
     return ats_mission_data
-@app.post("/api/mission/autosave")
-async def save_autosave(mission: dict):
-    global ats_mission_data
-    ats_mission_data = mission
-    add_log("Autosave updated")
-    return JSONResponse(content={"result": "Autosave updated"})
 
 
 # === WebSocket for real-time telemetry and control ===
