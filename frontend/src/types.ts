@@ -1,3 +1,4 @@
+// ./src/types.ts
 export type LogEntry = {
     id?: number;
     timestamp: string;

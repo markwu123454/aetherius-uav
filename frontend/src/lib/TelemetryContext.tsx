@@ -200,7 +200,6 @@ export function TelemetryProvider({children}: { children: ReactNode }) {
                     (entry: any) =>
                         `${entry.class}.${entry.method}(${entry.parameters.join(", ")}) from ${entry.file}`
                 );
-                console.log(`[Mission] Logic functions found:\n${functionsList.join("\n")}`);
             }
 
             return data as Types.ProcessedMission;
@@ -209,7 +208,6 @@ export function TelemetryProvider({children}: { children: ReactNode }) {
             return null;
         }
     };
-
 
     const fetchAutosaveMission = async (): Promise<Types.Mission | null> => {
         try {
@@ -227,7 +225,6 @@ export function TelemetryProvider({children}: { children: ReactNode }) {
             return null;
         }
     };
-
 
     return (
         <TelemetryContext.Provider
