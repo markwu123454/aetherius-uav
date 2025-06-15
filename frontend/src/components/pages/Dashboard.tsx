@@ -29,7 +29,7 @@ export function Dashboard() {
 
   return (
     <PageContainer>
-  <div className="w-full h-full overflow-auto bg-zinc-950 text-zinc-200 font-mono !px-8 !py-8">
+  <div className="w-full h-full overflow-y-hidden bg-zinc-950 text-zinc-200 font-mono !px-8 !py-8">
     <h1 className="text-4xl font-bold mb-8 text-white">Dashboard</h1>
 
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
@@ -37,10 +37,10 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* GPS */}
         <Card className="bg-zinc-900 shadow-lg h-full">
-          <CardHeader className="!p-2">
+          <CardHeader className="!p-6">
             <CardTitle>🛰️ GPS</CardTitle>
           </CardHeader>
-          <CardContent className="!p-6 space-y-2 text-base">
+          <CardContent className="!px-6 space-y-2 text-base">
             <p>Lat/Lon: <span className="font-mono">{gps.lat}, {gps.lon}</span></p>
             <p>Sats: {gps.sats}</p>
             <p>HDOP: {gps.hdop}</p>
@@ -52,7 +52,7 @@ export function Dashboard() {
           <CardHeader className="!p-6">
             <CardTitle>📈 Basic Flight Data</CardTitle>
           </CardHeader>
-          <CardContent className="!p-6 !space-y-2 text-base">
+          <CardContent className="!px-6 !space-y-2 text-base">
             <p>Altitude: -- m</p>
             <p>Airspeed: -- m/s</p>
             <p>Pitch: --°</p>
@@ -62,10 +62,10 @@ export function Dashboard() {
 
         {/* Flight Status */}
         <Card className="bg-zinc-900 shadow-lg h-full">
-          <CardHeader className="p-6">
+          <CardHeader className="!p-6">
             <CardTitle>🧭 Flight Status</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-2 text-base">
+          <CardContent className="!px-6 space-y-2 text-base">
             <p>Mode: <span className="text-white font-medium">{mode}</span></p>
             <p>Status: <span className={`font-bold ${armed ? 'text-green-400' : 'text-red-400'}`}>{armed ? 'ARMED' : 'DISARMED'}</span></p>
           </CardContent>
@@ -73,10 +73,10 @@ export function Dashboard() {
 
         {/* Battery */}
         <Card className="bg-zinc-900 shadow-lg h-full">
-          <CardHeader className="p-6">
+          <CardHeader className="!p-6">
             <CardTitle>⚡ Battery</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-2 text-base">
+          <CardContent className="!px-6 !space-y-2 text-base">
             <p>Voltage: {battery.voltage} V</p>
             <p>Current: {battery.current} A</p>
             <p>Charge: {battery.percent}%</p>
@@ -85,11 +85,11 @@ export function Dashboard() {
 
         {/* Logs */}
         <Card className="bg-zinc-900 shadow-lg col-span-2 flex flex-col h-full">
-          <CardHeader className="p-6">
+          <CardHeader className="!p-6">
             <CardTitle>🧾 Condensed Logs</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="scrollbar-dark p-6 space-y-1 text-sm text-zinc-300 overflow-y-auto max-h-40">
+          <CardContent className="!px-0">
+            <div className="scrollbar-dark !px-6 !space-y-1 text-sm text-zinc-300 overflow-y-auto max-h-40">
               {filteredLogs.length === 0 ? (
                 <p className="italic text-zinc-500">No relevant logs</p>
               ) : (
@@ -115,10 +115,10 @@ export function Dashboard() {
 
       {/* Right Column (Mini Map) */}
       <Card className="bg-zinc-900 shadow-lg h-full">
-        <CardHeader className="p-6">
+        <CardHeader className="!p-6">
           <CardTitle>🗺️ Mini Map</CardTitle>
         </CardHeader>
-        <CardContent className="p-6 h-[550px]">
+        <CardContent className="!p-6 !h-[550px]">
           <MapContainer
             center={uavPosition}
             zoom={15}

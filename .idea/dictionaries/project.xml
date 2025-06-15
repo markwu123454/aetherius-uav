@@ -3,7 +3,9 @@
     <words>
       <w>aetherius</w>
       <w>hdop</w>
+      <w>pixhawk</w>
       <w>sats</w>
+      <w>vdop</w>
     </words>
   </dictionary>
 </component>

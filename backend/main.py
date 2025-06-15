@@ -3,46 +3,186 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
+from deepdiff import DeepDiff
+from threading import Thread
 import asyncio
 import random
 import os
 import csv
 import atexit
+import copy
+import time
 from process_mission import process_mission
-from mavlink_interface import MavlinkInterface
+from mavlink_interface import mavlink_interface
+from uav_server import UpdateServer
 
 telemetry_log = []
-recording_enabled = True
+telemetry_recording_enabled = True
 result = None  # global placeholder
 mission_data = None
 ats_mission_data = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic
-    asyncio.create_task(simulate_drone())
+    server = UpdateServer(
+        port=8080,
+        script_name=os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "onboard", "uav_main.py"
+        )
+    )
+
+    # Wrap the server in a thread
+    server_thread = Thread(target=server.start, daemon=True)
+    server_thread.start()
+    print("update server started.")
+
+    # Start async mainloop task
+    asyncio.create_task(mainloop())
+
     yield
-    # Shutdown logic (if any)
+
+    # No shutdown logic yet
 
 
 app = FastAPI(lifespan=lifespan)
 
 log_counter = 0  # top-level, above add_log()
+log_entries = []
+
+last_high_rate = {}
+last_status_state = {}
+high_rate_log = []
+status_log = []
+STATUS_KEYS = ["armed", "mode", "manual_control_enabled", "autopilot_active", "mission"]
 
 # TODO: Remember to implement
 drone_state = {
+    # Connection and control status
+    "uav_connected": True,
     "armed": False,
     "mode": "Stabilize",
-    "recording": False,
-    "rssi": "--%",
-    "ping": "--ms",
+    "failsafe": {
+        "gps": False,
+        "battery": False,
+        "rc": False,
+        "gcs": False,
+    },
+    "manual_control_enabled": False,
+    "autopilot_active": False,
+
+    # Communication
+    "rssi": "--%",  # Signal strength
+    "ping": "--ms",  # Ground-to-air ping
     "videoLatency": "--ms",
-    "gps": {"lat": 0, "lon": 0, "sats": 0, "hdop": 0.0},
-    "battery": {"voltage": 0, "current": 0, "percent": 0},
-    "uav_connected": True,
+    "last_heartbeat": "--s",
+    "link_status": {
+        "mavlink": True,
+        "video": True,
+        "telemetry": True,
+        "mission": True,
+    },
+
+    # Positioning and navigation
+    "gps": {
+        "lat": 0.0,
+        "lon": 0.0,
+        "alt": 0.0,
+        "relative_alt": 0.0,
+        "hdop": 0.0,
+        "vdop": 0.0,
+        "sats": 0,
+        "fix_type": "No Fix",  # e.g., "No Fix", "2D Fix", "3D Fix", "RTK"
+    },
+    "ekf_status": {
+        "pos_horiz_abs": True,
+        "pos_vert_abs": True,
+        "vel_horiz_abs": True,
+        "yaw_align": True,
+        "imu_consistent": True,
+    },
+    "imu": {
+        "accel": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "gyro": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "mag": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "temp": 0.0,
+    },
+
+    # Orientation and movement
+    "attitude": {
+        "roll": 0.0,
+        "pitch": 0.0,
+        "yaw": 0.0,
+    },
+    "velocity": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "airspeed": 0.0,
+        "groundspeed": 0.0,
+    },
+
+    # Battery and power
+    "battery": {
+        "voltage": 0.0,
+        "current": 0.0,
+        "percent": 0.0,
+        "temperature": 0.0,
+        "cell_count": 6,
+    },
+    "power_module": {
+        "input_voltage": 0.0,
+        "output_voltage": 0.0,
+        "consumption_mAh": 0,
+    },
+
+    # Recording and camera
+    "recording": False,
+    "camera": {
+        "streaming": True,
+        "resolution": "1280x720",
+        "framerate": 30,
+        "exposure": "auto",
+        "lens_temperature": 0.0,
+    },
+
+    # Mission status
+    "mission": {
+        "active": False,
+        "current_wp": 0,
+        "total_wp": 0,
+        "progress": 0.0,  # percentage
+        "paused": False,
+    },
+
+    # System health
+    "health": {
+        "cpu_temp": 0.0,
+        "cpu_usage": 0.0,
+        "memory_usage": 0.0,
+        "disk_usage": 0.0,
+        "uptime": "--s",
+        "errors": [],
+        "warnings": [],
+    },
+
+    # Time and sync
+    "time": {
+        "system_time": "--:--:--",
+        "gps_time": "--:--:--",
+        "synced": True,
+    },
+
+    # Custom data for UI / debugging
+    "debug": {
+        "last_command": None,
+        "last_mission_event": None,
+        "custom_flags": {},
+    },
 }
 
-log_entries = []
 
 # === CORS for React frontend ===
 app.add_middleware(
@@ -55,7 +195,8 @@ app.add_middleware(
 
 
 def write_csv_log(data, prefix):
-    return # TODO: delete this during prod
+    pass  # TODO: delete this during prod
+    '''
     if not data:
         print(f"[Shutdown] No {prefix} data to save.")
         return
@@ -75,6 +216,7 @@ def write_csv_log(data, prefix):
         writer.writerows(data)
 
     print(f"[Shutdown] {prefix.capitalize()} saved.")
+    '''
 
 
 def save_telemetry_to_csv():
@@ -85,47 +227,188 @@ def save_telemetry_to_csv():
 
 atexit.register(save_telemetry_to_csv)
 
+VALID_IMPORTANCE = {"minor", "major", "critical"}
+VALID_SEVERITY = {"debug", "info", "warn", "error", "system"}
 
-def add_log(message: str, importance: str = "minor", severity: str = "info"):
+def add_log(message: str, *, source: str = "GCS", importance: str = "minor", severity: str = "info"):
     global log_counter
+
+    # Validate inputs
+    if importance not in VALID_IMPORTANCE:
+        raise ValueError(f"Invalid importance '{importance}'. Must be one of {VALID_IMPORTANCE}")
+    if severity not in VALID_SEVERITY:
+        raise ValueError(f"Invalid severity '{severity}'. Must be one of {VALID_SEVERITY}")
+
     timestamp = datetime.now().strftime("%H:%M:%S")
     entry = {
         "id": log_counter,
         "timestamp": timestamp,
         "message": message,
+        "source": source,
         "importance": importance,
         "severity": severity,
     }
     log_counter += 1
-    # print(f"[LOG] New log added: {entry}")
+
+    # Add to top
     log_entries.insert(0, entry)
-    if len(log_entries) > 1000:
+
+    # Trim if too large
+    if len(log_entries) > 5000:
         log_entries.pop()
+
+    # Optional: hook for printing / writing to file / broadcasting
+    # print(f"[{timestamp}] [{severity.upper()}] [{source}] {message}")
+
 
 
 # === Background simulation task ===
-async def simulate_drone():
+async def mainloop():
+    global last_high_rate, last_status_state, high_rate_log, last_full_snapshot_time
+
     while True:
-        # Simulate battery drain and current fluctuations
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(time.time()))
+
+        # --- Update telemetry ---
         drone_state["battery"]["voltage"] = round(random.uniform(10.5, 12.6), 2)
-        drone_state["battery"]["current"] = round(random.uniform(0.5, 2.0), 2)
-        drone_state["battery"]["percent"] = max(0,
-                                                min(100, drone_state["battery"]["percent"] - random.uniform(0.01, 0.1)))
 
-        # Simulate GPS movement
         drone_state["gps"]["lat"] = round(drone_state["gps"]["lat"] + random.uniform(-0.0001, 0.0001), 6)
-        drone_state["gps"]["lon"] = round(drone_state["gps"]["lon"] + random.uniform(-0.0001, 0.0001), 6)
-        drone_state["gps"]["sats"] = random.randint(6, 12)
-        drone_state["gps"]["hdop"] = round(random.uniform(0.6, 1.8), 2)
 
-        # Simulate signal/link quality
         drone_state["rssi"] = f"{random.randint(60, 95)}%"
         drone_state["ping"] = f"{random.randint(20, 120)}ms"
         drone_state["videoLatency"] = f"{random.randint(50, 300)}ms"
 
-        # add_log("Telemetry updated")
 
-        await asyncio.sleep(random.choice(range(3)))  # update every second
+        # --- High-rate logging ---
+        MAX_LOG_ENTRIES = 20000
+        FULL_SNAPSHOT_INTERVAL = 30  # seconds
+
+        if "last_high_rate" not in locals():
+            last_high_rate = {}
+            last_full_snapshot_time = time.time()
+
+        # Build current high-rate data
+        high_data = {
+            "timestamp": timestamp,
+            "rssi": drone_state["rssi"],
+            "ping": drone_state["ping"],
+            "videoLatency": drone_state["videoLatency"],
+            "gps_lat": drone_state["gps"]["lat"],
+            "gps_lon": drone_state["gps"]["lon"],
+            "gps_alt": drone_state["gps"]["alt"],
+            "gps_relative_alt": drone_state["gps"]["relative_alt"],
+            "gps_hdop": drone_state["gps"]["hdop"],
+            "gps_vdop": drone_state["gps"]["vdop"],
+            "gps_sats": drone_state["gps"]["sats"],
+            "imu_accel": drone_state["imu"]["accel"],
+            "imu_gyro": drone_state["imu"]["gyro"],
+            "imu_mag": drone_state["imu"]["mag"],
+            "imu_temp": drone_state["imu"]["temp"],
+            "attitude_roll": drone_state["attitude"]["roll"],
+            "attitude_pitch": drone_state["attitude"]["pitch"],
+            "attitude_yaw": drone_state["attitude"]["yaw"],
+            "velocity_x": drone_state["velocity"]["x"],
+            "velocity_y": drone_state["velocity"]["y"],
+            "velocity_z": drone_state["velocity"]["z"],
+            "velocity_airspeed": drone_state["velocity"]["airspeed"],
+            "velocity_groundspeed": drone_state["velocity"]["groundspeed"],
+            "battery_voltage": drone_state["battery"]["voltage"],
+            "battery_current": drone_state["battery"]["current"],
+            "battery_percent": drone_state["battery"]["percent"],
+            "battery_temperature": drone_state["battery"]["temperature"],
+            "camera_lens_temperature": drone_state["camera"]["lens_temperature"],
+            "mission_progress": drone_state["mission"]["progress"],
+            "health_cpu_temp": drone_state["health"]["cpu_temp"],
+            "health_cpu_usage": drone_state["health"]["cpu_usage"],
+            "health_memory_usage": drone_state["health"]["memory_usage"],
+            "health_disk_usage": drone_state["health"]["disk_usage"],
+        }
+
+        # Only log what changed (delta)
+        delta_data = {"timestamp": timestamp}
+        for key, val in high_data.items():
+            if key == "timestamp":
+                continue
+            if last_high_rate.get(key) != val:
+                delta_data[key] = val
+
+        # Snapshot override every 30 seconds
+        now = time.time()
+        force_snapshot = now - last_full_snapshot_time >= FULL_SNAPSHOT_INTERVAL
+        if force_snapshot:
+            add_log("full telemetry logged", importance="major")
+            delta_data = high_data.copy()
+            last_full_snapshot_time = now
+
+        # Append to rolling buffer
+        if len(delta_data) > 1:  # skip empty deltas
+            high_rate_log.append(delta_data)
+            last_high_rate = high_data.copy()
+
+        # Trim to last N entries
+        if len(high_rate_log) > MAX_LOG_ENTRIES:
+            high_rate_log = high_rate_log[-MAX_LOG_ENTRIES:]
+
+
+        # --- Status logging ---
+        WATCHED_STATUS_PATHS = [
+            "uav_connected",
+            "armed",
+            "mode",
+            "failsafe.gps",
+            "failsafe.battery",
+            "failsafe.rc",
+            "failsafe.gcs",
+            "manual_control_enabled",
+            "autopilot_active",
+            "link_status.mavlink",
+            "link_status.video",
+            "link_status.telemetry",
+            "link_status.mission",
+            "gps.fix_type",
+            "ekf_status.pos_horiz_abs",
+            "ekf_status.pos_vert_abs",
+            "ekf_status.vel_horiz_abs",
+            "ekf_status.yaw_align",
+            "ekf_status.imu_consistent",
+            "recording",
+            "camera.streaming",
+            "camera.resolution",
+            "camera.framerate",
+            "camera.exposure",
+            "mission.active",
+            "mission.current_wp",
+            "mission.paused",
+        ]
+
+        if "last_status_state" not in locals():
+            last_status_state = {}
+
+        current_status = {}
+        for path in WATCHED_STATUS_PATHS:
+            parts = path.split(".")
+            val = drone_state
+            for part in parts:
+                val = val.get(part) if isinstance(val, dict) else None
+                if val is None:
+                    break
+            current_status[path] = val
+
+        if current_status != last_status_state:
+            for key in WATCHED_STATUS_PATHS:
+                old = last_status_state.get(key)
+                new = current_status.get(key)
+                if old != new:
+                    status_log.append({
+                        "timestamp": timestamp,
+                        "field": key,
+                        "old_value": old,
+                        "new_value": new,
+                    })
+            last_status_state = current_status.copy()
+
+        await asyncio.sleep(0.1)
+
 
 
 # === Basic REST Endpoints ===
@@ -145,17 +428,23 @@ async def command_action(action: str):
 
     # Simulate changes — this should be replaced with MAVLink commands
     if action == "arm":
+        if drone_state["armed"]:
+            add_log("Drone already armed.", importance="major")
+        else:
+            add_log("Drone armed.", importance="major")
         drone_state["armed"] = True
-        add_log("Drone armed", importance="major")
     elif action == "disarm":
+        if not drone_state["armed"]:
+            add_log("Drone already disarmed.", importance="major")
+        else:
+            add_log("Drone disarmed.", importance="major")
         drone_state["armed"] = False
-        add_log("Drone disarmed", importance="major")
     elif action == "hold_alt":
         drone_state["mode"] = "Alt Hold"
         add_log("Altitude hold")
     elif action == "rtl":
         drone_state["mode"] = "Return to Launch"
-        add_log("Return to Launch", importance="major", severity="warning")
+        add_log("Returning to Launch", importance="major", severity="warning")
     elif action == "abort":
         drone_state["mode"] = "Failsafe"
         drone_state["armed"] = False
@@ -167,6 +456,12 @@ async def command_action(action: str):
 @app.get("/api/logs")
 def get_logs():
     return {"logs": log_entries}
+
+
+@app.post("/api/logs")
+def add_logs(message: str, importance: str = "minor", severity: str = "info"):
+    add_log(message, importance=importance, severity=severity)
+    return JSONResponse(content={"result": "added", "action": message})
 
 
 @app.post("/api/mission/process")
@@ -214,7 +509,7 @@ async def telemetry_socket(websocket: WebSocket):
             })
 
             # Log telemetry snapshot if recording
-            if recording_enabled:
+            if telemetry_recording_enabled:
                 telemetry_log.append({
                     "timestamp": datetime.now().isoformat(),
                     "lat": drone_state["gps"]["lat"],

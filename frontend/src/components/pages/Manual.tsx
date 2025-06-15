@@ -9,7 +9,7 @@ import {Card} from "@/components/ui/card"
 export default function Manual() {
     const {viewer, isReady} = useCesiumContext();
     const bindTo = useCesiumBindTo();
-    const {fetchProcessedMission} = useTelemetry();
+    const {fetchProcessedMission, fetchAutosaveMission} = useTelemetry();
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [mission, setMission] = useState<ProcessedMission | null>(null);
@@ -42,8 +42,8 @@ export default function Manual() {
 
         try {
             // Clear existing content
-            viewer.scene.primitives.removeAll();
-            viewer.entities.removeAll();
+            //viewer.scene.primitives.removeAll();
+            //viewer.entities.removeAll();
 
             const points = mission.flight_path.map(({lon, lat, alt}) =>
                 Cartesian3.fromDegrees(lon, lat, alt)

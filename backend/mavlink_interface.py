@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 import time
 
 
-class MavlinkInterface:
+class mavlink_interface:
     def __init__(self, connection_str: str, baudrate: int = 57600):
         """
         Initialize MAVLink connection.

@@ -70,12 +70,14 @@ const defaultState: Types.TelemetryState = {
     telemetryBuffer: [],
 };
 
+
 const TelemetryContext = createContext<Types.TelemetryContextType>({
     ...defaultState,
     sendCommand: async () => {
     },
     fetchLatestTelemetry: async () => {
     },
+    // @ts-ignore
     sendMission: async (mission: Types.Mission) => {
     },
     fetchProcessedMission: async () => null,
@@ -181,7 +183,7 @@ export function TelemetryProvider({children}: { children: ReactNode }) {
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(mission),
             });
-            const data = await res.json();
+            await res.json();
             console.log("[Mission] Sent and autosaved mission");
         } catch (err) {
             console.error("[Mission] Failed to send mission:", err);
@@ -196,7 +198,7 @@ export function TelemetryProvider({children}: { children: ReactNode }) {
             console.log("[Mission] Fetched processed mission");
 
             if (data.available_logic && Array.isArray(data.available_logic)) {
-                const functionsList = data.available_logic.map(
+                data.available_logic.map(
                     (entry: any) =>
                         `${entry.class}.${entry.method}(${entry.parameters.join(", ")}) from ${entry.file}`
                 );

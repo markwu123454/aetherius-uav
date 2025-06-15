@@ -195,48 +195,90 @@ def build_path_geometry(waypoints: List[Dict[str, float]], loiter_radius: float)
 
     return {"lat0": lat0, "lon0": lon0, "segments": segments}
 
-
-def sample_geometry(geom: Dict[str, Union[float, List[Segment]]],speed_mps: float,dt: float = 0.2) -> List[Dict[str, float]]:
+def sample_geometry(
+    geom: Dict[str, Union[float, List]],
+    speed_mps: float,
+    dt: float = 0.2
+) -> List[Dict[str, float]]:
     """
     Sample the abstract geometry into discrete points based on speed and
-    time delta.
+    time delta, with a smooth altitude gradient between segments.
+
     Args:
-        geom: Dictionary from build_path_geometry.
+        geom: Dictionary from build_path_geometry, which must include:
+            - "lat0", "lon0" (reference lat/lon)
+            - "segments": a list of Segment objects, each having:
+                - start (np.array([x, y]))
+                - end   (np.array([x, y]))
+                - center (np.array([x, y]))           # for arcs
+                - start_ang, end_ang, direction, radius  # for arcs
+                - alt   (float): target altitude at the end of this segment
         speed_mps: Speed in meters per second.
         dt: Time interval per sample in seconds.
     Returns:
-        List of points with keys 'lat', 'lon', 'alt'.
+        List of points with keys 'lat', 'lon', 'alt', sampled at intervals
+        of ~speed_mps*dt meters along each segment, with altitude interpolated
+        from the previous segment’s altitude to the current segment’s alt.
     """
     lat0 = geom["lat0"]
     lon0 = geom["lon0"]
     spacing = speed_mps * dt  # desired meters between samples
     out_points: List[Dict[str, float]] = []
 
+    prev_alt = None
+
     for seg in geom["segments"]:
+        end_alt = seg.alt
+        # Determine the starting altitude for this segment:
+        if prev_alt is None:
+            start_alt = end_alt
+        else:
+            start_alt = prev_alt
+
+        # Compute number of samples along this segment:
         if isinstance(seg, LineSeg):
-            # Sample along straight line
+            # Straight‐line distance:
             vec = seg.end - seg.start
             length = np.linalg.norm(vec)
             n_samples = max(1, int(length / spacing))
+
             for i in range(1, n_samples + 1):
                 frac = i / (n_samples + 1)
                 point_xy = seg.start + vec * frac
                 lat, lon = xy_to_latlon(lat0, lon0, point_xy[0], point_xy[1])
-                out_points.append({"lat": round(lat, 6), "lon": round(lon, 6), "alt": round(seg.alt, 1)})
+                # Linear interpolation of altitude:
+                alt = start_alt + (end_alt - start_alt) * frac
+                out_points.append({
+                    "lat": round(lat, 6),
+                    "lon": round(lon, 6),
+                    "alt": round(alt, 1)
+                })
+
         else:
-            # Sample along arc
+            # Arc segment:
             raw_diff = (seg.end_ang - seg.start_ang + 360) % 360
             ang_span = raw_diff if seg.direction > 0 else raw_diff - 360
             arc_length = abs(math.radians(ang_span) * seg.radius)
             n_samples = max(1, int(arc_length / spacing))
+
             for i in range(1, n_samples + 1):
-                ang = seg.start_ang + seg.direction * (i / (n_samples + 1)) * abs(ang_span)
+                frac = i / (n_samples + 1)
+                ang = seg.start_ang + seg.direction * frac * abs(ang_span)
                 ang %= 360
                 rad = math.radians(ang)
                 point_xy = seg.center + seg.radius * np.array([math.cos(rad), math.sin(rad)])
                 lat, lon = xy_to_latlon(lat0, lon0, point_xy[0], point_xy[1])
-                out_points.append({"lat": round(lat, 6), "lon": round(lon, 6), "alt": round(seg.alt, 1)})
+                alt = start_alt + (end_alt - start_alt) * frac
+                out_points.append({
+                    "lat": round(lat, 6),
+                    "lon": round(lon, 6),
+                    "alt": round(alt, 1)
+                })
+
+        prev_alt = end_alt
+
     return out_points
+
 
 
 def extract_callable_methods_from_file(code: str, filename: str):

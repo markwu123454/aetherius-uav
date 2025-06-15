@@ -2,7 +2,7 @@ import {Button} from "@/components/ui/button";
 import {Card, CardHeader, CardTitle, CardContent} from "@/components/ui/card";
 import {useEffect, useState, useRef} from "react";
 import {useTelemetry} from "@/lib/TelemetryContext";
-import PopupModal from "@/components/ui/PopupModal"; // ⬅️ Add this
+import PopupModal from "@/components/ui/PopupModal";
 
 export default function DriverStation() {
     const {
@@ -17,27 +17,46 @@ export default function DriverStation() {
         sendCommand,
     } = useTelemetry();
 
+    // @ts-ignore
     const [time, setTime] = useState(new Date().toLocaleTimeString());
-    const [showAbortConfirm, setShowAbortConfirm] = useState(false); // ⬅️ Modal trigger state
+    const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+    // @ts-ignore
     const [enterCount, setEnterCount] = useState(0);
     const [armingWindow, setArmingWindow] = useState(false);
     const enterTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
-    const filteredLogs = logs.filter(
-        (log) =>
-            ['major', 'critical'].includes(log.importance) ||
-            ['warning', 'error'].includes(log.severity)
-    );
+    // Updated log filtering: include based on importance and severity
+    const filteredLogs = logs.filter(log => {
+        const impOk = log.importance === 'critical' || log.importance === 'major';
+        const sevOk = ['warn', 'error', 'system'].includes(log.severity);
+        return impOk || sevOk;
+    }).slice(0, 50);
 
+    // Severity badge colors
     const severityColor = (severity: string) => {
         switch (severity) {
-            case 'warning':
-                return 'text-orange-400';
-            case 'error':
-                return 'text-red-500';
-            default:
-                return 'text-white';
+            case 'error': return 'bg-red-600 text-white';
+            case 'warn':  return 'bg-yellow-500 text-black';
+            case 'system': return 'bg-blue-600 text-white';
+            case 'info': return 'bg-gray-600 text-white';
+            case 'debug': return 'bg-green-600 text-white';
+            default: return 'bg-gray-500 text-white';
+        }
+    };
+
+    // Source badge colors
+    const sourceColor = (source: string) => {
+        switch (source) {
+            case 'Pixhawk': return 'bg-indigo-600 text-white';
+            case 'Telemetry': return 'bg-teal-600 text-white';
+            case 'Network': return 'bg-purple-600 text-white';
+            case 'AI': return 'bg-pink-600 text-white';
+            case 'Vision': return 'bg-green-700 text-white';
+            case 'System': return 'bg-gray-800 text-white';
+            case 'Mission': return 'bg-orange-500 text-white';
+            case 'GCS': return 'bg-gray-700 text-white';
+            default: return 'bg-gray-500 text-white';
         }
     };
 
@@ -239,22 +258,17 @@ export default function DriverStation() {
                     <Card className="w-1/3 bg-zinc-800 text-zinc-200 !p-2">
                         <CardHeader className="!p-2"><CardTitle>Logs</CardTitle></CardHeader>
                         <CardContent className="!p-0">
-                            <div
-                                className="scrollbar-dark !p-2 space-y-1 text-sm text-zinc-300 overflow-y-auto max-h-40">
+                            <div className="overflow-y-auto max-h-40 !p-2 !space-y-1 scrollbar-dark">
                                 {filteredLogs.length === 0 ? (
-                                    <p className="italic text-zinc-500">No logs available</p>
+                                    <p className="italic text-zinc-500">No important logs</p>
                                 ) : (
-                                    filteredLogs.slice(-50).map((log, idx) => (
-                                        <p key={idx} className={`
-                      ${log.importance === "critical" ? "font-bold my-2"
-                                            : log.importance === "major" ? "font-bold" : ""}
-                    `}>
-                                            [{log.timestamp}]{" "}
-                                            <span className={`${severityColor(log.severity)} inline-block w-[80px]`}>
-                        {log.severity.toUpperCase()}
-                      </span>
-                                            : {log.message}
-                                        </p>
+                                    filteredLogs.map((log) => (
+                                        <div key={log.id} className="flex items-start gap-2">
+                                            <span className="flex-none text-xs text-zinc-500">[{log.timestamp}]</span>
+                                            <span className={`rounded !px-1 text-xs ${severityColor(log.severity)}`}> {log.severity.toUpperCase()} </span>
+                                            <span className={`rounded !px-1 text-xs ${sourceColor(log.source)}`}> {log.source} </span>
+                                            <span className="flex-grow text-zinc-300">{log.message}</span>
+                                        </div>
                                     ))
                                 )}
                             </div>
