@@ -5,7 +5,7 @@ export type LogEntry = {
     message: string;
     importance: "minor" | "major" | "critical";
     severity: "info" | "warning" | "error" | "system" | "debug";
-    source: "Pixhawk" | "Telemetry" | "Network" | "AI" | "Vision" | "GCS" | "Mission" | "System";
+    source: "Pixhawk" | "Telemetry" | "Network" | "AI" | "Vision" | "GCS" | "Mission" | "System" | "RPi";
 };
 
 export type TelemetryPoint = {

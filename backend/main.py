@@ -3,18 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
-from deepdiff import DeepDiff
 from threading import Thread
 import asyncio
 import random
 import os
-import csv
 import atexit
-import copy
 import time
+
 from process_mission import process_mission
-from mavlink_interface import mavlink_interface
-from uav_server import UpdateServer
+from uav_server import UAVServer
+from uav_connection import UAVConnection
 
 telemetry_log = []
 telemetry_recording_enabled = True
@@ -25,26 +23,32 @@ ats_mission_data = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
-    server = UpdateServer(
-        port=8080,
-        script_name=os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "onboard", "uav_main.py"
-        )
-    )
+    # derive project_root = project_dir/frontend/.. → project_dir
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # point at the whole onboard/rpi folder
+    base_dir = os.path.join(project_root, "onboard", "rpi")
 
-    # Wrap the server in a thread
+    # start the directory‐serving HTTP server in a daemon thread
+    server = UAVServer(port=8080, base_dir=base_dir)
     server_thread = Thread(target=server.start, daemon=True)
     server_thread.start()
-    print("update server started.")
+    print("Update server started, serving:", base_dir)
 
-    # Start async mainloop task
-    asyncio.create_task(mainloop())
+    print("Connecting to rpi")
+    await UAVConnection()
 
-    yield
 
-    # No shutdown logic yet
+    # fire off your existing mainloop task
+    main_task = asyncio.create_task(mainloop())
+
+    try:
+        yield
+    finally:
+        # on shutdown, cancel mainloop and stop HTTP server cleanly
+        main_task.cancel()
+        server.shutdown()    # calls httpd.shutdown()/server_close()
+        server_thread.join()
+        print("Update server stopped.")
 
 
 app = FastAPI(lifespan=lifespan)

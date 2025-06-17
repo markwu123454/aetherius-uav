@@ -17,10 +17,10 @@ async def handler(ws):
     except Exception as e:
         print(f"[ERROR] in handler: {e}")
 
-async def main():
+async def UAVConnection():
     server = await websockets.serve(handler, "0.0.0.0", 8765)
     print("[INFO] WebSocket server listening on ws://0.0.0.0:8765")
     await server.wait_closed()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(UAVConnection())

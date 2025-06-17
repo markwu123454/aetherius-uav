@@ -1,3 +1,4 @@
+import json
 import os
 import urllib.request
 import hashlib
@@ -5,6 +6,8 @@ import subprocess
 import time
 import socket
 import concurrent.futures
+import threading
+import sys
 
 
 def get_local_ip(retries=10, delay=5):
@@ -39,14 +42,18 @@ def ping_host(ip, port=TARGET_PORT, timeout=1):
         return False
 
 
-
 def is_valid_update_server(ip):
+    url = f"http://{ip}:{TARGET_PORT}/ping"
     try:
-        print(f"[DEBUG] Pinging {ip} via http://{ip}:{TARGET_PORT}/ping")
-        with urllib.request.urlopen(f"http://{ip}:{TARGET_PORT}/ping", timeout=2) as resp:
-            return resp.read().strip() == b"hello-uav"
-    except:
+        print(f"[DEBUG] HTTP GET {url}")
+        with urllib.request.urlopen(url, timeout=2) as resp:
+            body = resp.read().strip()          # ← read once
+        print(f"[DEBUG] /ping returned: {body!r}")
+        return body == b"hello-uav"
+    except Exception as e:
+        print(f"[DEBUG] is_valid_update_server error: {e}")
         return False
+
 
 
 def check_ip(ip):
@@ -63,7 +70,7 @@ def check_ip(ip):
 
 
 def discover_update_server():
-    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=52) as executor:
         futures = []
         for i in range(1, 255):
             ip = f"{SCAN_BASE}{i}"
@@ -110,15 +117,28 @@ def update_main_script(remote_script: bytes) -> bool:
 
 uav_process = None
 
+
 def run_main(server_ip: str):
     global uav_process
     try:
         uav_process = subprocess.Popen(
-            ["python3", MAIN_SCRIPT, "--server-ip", server_ip]
+            ["python3", MAIN_SCRIPT, "--server-ip", server_ip],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,       # gives you str lines instead of bytes
+            bufsize=1        # line-buffered
         )
-        print(f"Started UAV main script (PID {uav_process.pid}) → server {server_ip}")
+
+        def pump():
+            for line in uav_process.stdout:
+                # this print goes into your update-server stdout,
+                # and will show up in the same journal stream
+                print(line.rstrip(), file=sys.stdout, flush=True)
+
+        threading.Thread(target=pump, daemon=True).start()
     except Exception as e:
         print("Failed to start UAV main script:", e)
+
 
 def stop_main():
     global uav_process
@@ -132,6 +152,7 @@ def stop_main():
             uav_process.kill()
         uav_process = None
 
+
 # === MAIN LOOP ===
 
 def main():
@@ -140,41 +161,63 @@ def main():
 
     while True:
         print("=== Updating Server ===")
-        if not update_server:
+
+        # 1. find update server
+        if update_server is None:
             update_server = discover_update_server()
-            print("Discovered update server:", update_server)
+            if update_server:
+                print("Discovered update server:", update_server)
+            else:
+                print("No update server found. Retrying in 10s...")
+                time.sleep(10)
+                continue
 
-        if update_server:
+        # 2. fetch list of files
+        try:
+            with urllib.request.urlopen(f"{update_server}/list", timeout=5) as resp:
+                files = json.load(resp)
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch file list: {e}")
+            update_server = None
+            time.sleep(10)
+            continue
+
+        # 3. sync each file
+        changed = False
+        base_dir = os.path.dirname(MAIN_SCRIPT)
+        for rel in files:
             try:
-                remote_script = fetch_remote_file(f"{update_server}/uav_main.py")
-                remote_hash = hash_bytes(remote_script)
-                local_hash = hash_local_file(MAIN_SCRIPT)
-                print(remote_script[:100].decode('utf-8', errors='replace'))
-
-                if remote_hash != local_hash:
-                    print("New version detected. Updating...")
-                    stop_main()  # Kill old
-                    if update_main_script(remote_script):
-                        print("Update successful. Restarting UAV main script.")
-                        run_main(update_server.split("://", 1)[1].split(":", 1)[0])
-                    else:
-                        print("Update failed. Will retry in 10s.")
-                else:
-                    if uav_process is None or uav_process.poll() is not None:
-                        print("No update needed. Script not running, starting...")
-                        run_main(update_server.split("://", 1)[1].split(":", 1)[0])
-                    else:
-                        print("No update needed. Script already running.")
+                remote_bytes = fetch_remote_file(f"{update_server}/{rel}")
             except Exception as e:
-                print(f"[ERROR] Update failed: {e}")
-                print("Forgetting current update server and rescanning next round.")
-                update_server = None
-        else:
-            print("No update server found. Retrying...")
+                print(f"[ERROR] Could not fetch {rel}: {e}")
+                continue
 
+            local_path = os.path.join(base_dir, rel)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+            if hash_bytes(remote_bytes) != hash_local_file(local_path):
+                print(f"[UPDATE] {rel} changed")
+                with open(local_path, "wb") as f:
+                    f.write(remote_bytes)
+                changed = True
+            else:
+                print(f"[UPDATE] {rel} not changed")
+
+        # 4. process management
+        host = update_server.split("://", 1)[1].split(":", 1)[0]
+        if changed:
+            stop_main()
+            print("Restarting after update...")
+            run_main(host)
+        elif uav_process is None or uav_process.poll() is not None:
+            print("Process not running; starting it...")
+            run_main(host)
+        else:
+            print("No changes; process still running.")
+
+        # 5. wait before next cycle
         print("Sleeping 10 seconds...")
         time.sleep(10)
-
 
 
 if __name__ == "__main__":
