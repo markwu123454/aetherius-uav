@@ -15,7 +15,7 @@ Aetherius GCS is a modular ground control station for fixed-wing UAVs, designed 
 - **Frontend**: React + TypeScript + Tailwind CSS  
   - Cesium for map rendering  
   - React Context for telemetry and API state  
-- **Backend**: FastAPI (Python 3.11+)  
+- **Backend**: FastAPI (Python 3.11+), Websocket, HTTPServer 
   - Serves log endpoints, mission persistence, and telemetry websocket  
   - Interfaces with MAVLink stream via pyMAVLink  
 
@@ -34,7 +34,6 @@ aetherius-uav/
 │   ├── main.py
 ├── onboard/              # Raspberry Pi side program
 │   ├── rpi/
-├── docs/                 # Diagrams, architecture notes
 ```
 
 ## Running the Project
