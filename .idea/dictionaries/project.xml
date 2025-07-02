@@ -2,9 +2,12 @@
   <dictionary name="project">
     <words>
       <w>aetherius</w>
+      <w>asctime</w>
       <w>hdop</w>
+      <w>levelname</w>
       <w>pixhawk</w>
       <w>sats</w>
+      <w>telem</w>
       <w>vdop</w>
     </words>
   </dictionary>
