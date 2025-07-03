@@ -1,8 +1,7 @@
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import './styles.css';
-import {App} from './App.tsx';
+import {App} from './App';
 
 import {Dashboard} from "@/components/pages/Dashboard.tsx";
 import Telemetry from "@/components/pages/Telemetry";

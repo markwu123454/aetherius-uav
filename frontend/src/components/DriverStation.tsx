@@ -6,6 +6,7 @@ import {useRealTime} from "@/lib/RealTimeContext";
 import PopupModal from "@/components/ui/PopupModal";
 import type {ATTITUDE, SYS_STATUS, GLOBAL_POSITION_INT} from "@/types";
 import {shouldDisplayLog, formatLogEntry, logEntryClasses} from "@/lib/LogUtils";
+import HoldToConfirmButton from "@/components/ui/HoldToConfirmButton.tsx";
 
 function zeroProxy<T>(): T {
     return new Proxy({}, {
@@ -207,7 +208,7 @@ export default function DriverStation() {
                                 <Button variant="outline" onClick={sendDisarm}>DISARM</Button>
                                 <Button variant="outline" onClick={sendManual}>MANUAL</Button>
                                 <Button variant="outline" onClick={sendRTL}>RTL</Button>
-                                <Button variant="destructive" onClick={sendDisarm}>ABORT</Button>
+                                <HoldToConfirmButton onConfirm={sendDisarm}>ABORT</HoldToConfirmButton>
                             </div>
 
                             {/* Custom MAVLink */}

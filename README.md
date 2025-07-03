@@ -72,8 +72,19 @@ python3 run_gcs.py
 
 ## TODO
 
-- [ ] Flight mode switching UI
-- [ ] Advanced diagnostics
-- [ ] Remote file browser for onboard logs
-- [ ] Settings UI for persistent configuration
-- [ ] Camera + video streaming integration
+- [x] Comms with Pi
+- [x] Comms with PixHawk
+- [x] Comms with backend
+- [x] Send&receive message from Pixhawk
+- [x] UI - Driver Station
+- [ ] UI - Dashboard
+- [ ] UI - Telemetry
+- [ ] UI - Mission planning
+- [ ] UI - Mission control
+- [x] UI - Logs
+- [ ] UI - Settings
+- [ ] Lidar
+- [ ] Mission execution
+- [ ] Cesium 3d map
+- [ ] Live camera
+- [ ] Lidar 3d map

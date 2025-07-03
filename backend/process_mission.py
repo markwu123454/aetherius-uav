@@ -290,15 +290,15 @@ def extract_callable_methods_from_file(code: str, filename: str):
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
-        print(f"[extractor] SyntaxError in {filename}: {e}")
+        #print(f"[extractor] SyntaxError in {filename}: {e}")
         return [{"file": filename, "class": "?", "method": "?", "parameters": [], "error": str(e)}]
 
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
-            print(f"[extractor] Found class: {node.name}")
+            #print(f"[extractor] Found class: {node.name}")
             for item in node.body:
                 if isinstance(item, ast.FunctionDef):
-                    print(f"[extractor] └── Method: {item.name}")
+                    #print(f"[extractor] └── Method: {item.name}")
                     if item.name == "__init__":
                         continue
                     arg_names = [arg.arg for arg in item.args.args]
@@ -313,7 +313,7 @@ def extract_callable_methods_from_file(code: str, filename: str):
                     })
 
         elif isinstance(node, ast.FunctionDef):
-            print(f"[extractor] Found top-level function: {node.name}")
+            #print(f"[extractor] Found top-level function: {node.name}")
             arg_names = [arg.arg for arg in node.args.args if arg.arg != "self"]
             logic_entries.append({
                 "file": filename,
@@ -322,7 +322,7 @@ def extract_callable_methods_from_file(code: str, filename: str):
                 "parameters": arg_names
             })
 
-    print(f"[extractor] Extracted entries: {logic_entries}")
+    #print(f"[extractor] Extracted entries: {logic_entries}")
     return logic_entries
 
 

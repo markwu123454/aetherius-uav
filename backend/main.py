@@ -19,7 +19,7 @@ telemetry_log = []
 result = None  # global placeholder
 mission_data = None
 ats_mission_data = None
-connections: set[asyncio.Queue] = set()
+connections: set[tuple[WebSocket, asyncio.Queue]] = set()
 
 log_entries = []
 
@@ -285,7 +285,7 @@ async def mainloop():
 # </editor-fold>
 
 # === Basic REST Endpoints ===
-# <editor-fold>
+# <editor-fold desc="fastapi">
 @app.get("/")
 def root():
     return {"message": "Aetherius GCS backend is live!"}
@@ -328,7 +328,7 @@ async def upload_mission(mission: dict):
     global mission_data, ats_mission_data, result
     mission_data = mission
     ats_mission_data = mission  # autosave here
-    add_log("MP0001")
+    #add_log("MP0001")
     result = process_mission(mission_data)
     return JSONResponse(content={"result": "Mission received", "analysis": result})
 
@@ -344,9 +344,27 @@ async def get_mission_result():
 def get_autosave():
     if ats_mission_data is None:
         return JSONResponse(status_code=404, content={"error": "No autosave found"})
-    add_log("MP0000")
+    #add_log("MP0000")
     return ats_mission_data
 
+
+@app.post("/api/command/command_long")
+async def get_command_long(
+        command: str | int = None,
+        params: List[Any] = None
+):
+    if command is None:
+        pass
+    add_log("NW0102", {"command": command})
+    await send_cmd({"type": "command", "msg": {"command": command, "params": params}})
+    send_cmd(command, params)
+
+
+
+
+@app.get("/api/command/command_int")
+def get_command_int():
+    pass
 
 # </editor-fold>
 
@@ -359,35 +377,23 @@ async def live_socket(websocket: WebSocket):
     add_log("UI0000", {"ip": websocket.client.host})
 
     send_queue: asyncio.Queue = asyncio.Queue()
-    connections.add(send_queue)
+    connections.add((websocket, send_queue))
 
     async def sender_loop():
         try:
             while True:
-                msg = await send_queue.get()  # wait for anything to send
+                msg = await send_queue.get()
                 await websocket.send_json(msg)
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, WebSocketDisconnect):
             pass
 
     async def telemetry_loop():
-        '''
-        last_log_id = -1
         try:
             while True:
-                # build your telemetry payload
-                new_logs = [l for l in log_entries if l["id"] > last_log_id]
-                if new_logs:
-                    last_log_id = new_logs[-1]["id"]
-                payload = {**drone_state, "logs": new_logs}
-                await send_queue.put(payload)    # enqueue for sending
-                await asyncio.sleep(0.5)
-        except asyncio.CancelledError:
-            pass'''
-        while True:
-            try:
+                # replace with actual telemetry as needed
                 await asyncio.sleep(5)
-            except asyncio.CancelledError:
-                return
+        except asyncio.CancelledError:
+            pass
 
     async def command_loop():
         try:
@@ -397,53 +403,41 @@ async def live_socket(websocket: WebSocket):
         except (asyncio.CancelledError, WebSocketDisconnect):
             pass
 
-    # start all three
     sender_task = asyncio.create_task(sender_loop())
     telemetry_task = asyncio.create_task(telemetry_loop())
     command_task = asyncio.create_task(command_loop())
 
     try:
-        # wait until the command loop dies (e.g. client disconnect)
         await command_task
     finally:
-        # clean up on disconnect
         for task in (sender_task, telemetry_task):
             task.cancel()
-        connections.remove(send_queue)
+        connections.remove((websocket, send_queue))
 
 
 async def send_to_client(payload: dict) -> None:
-    if not connections:
-        return
-    #print(payload)
-    # since we know there's only one:
-    queue = next(iter(connections))
-    await queue.put(payload)
+    for _, queue in connections:
+        await queue.put(payload)
 
 
 async def process_client_command(msg: dict):
-
     try:
         assert "type" in msg and "message" in msg
     except AssertionError as e:
         print(repr(e))
+        return
 
     msg_body = msg["message"]
-
     print(repr(msg_body))
 
     match msg["type"]:
-
         case "command_raw":
             add_log("NW0102", {"command": msg})
             await send_cmd({"type": "command", "msg": {"command": msg_body["command"], "params": msg_body["params"]}})
-
         case "command":
             add_log("EX4200", {"msg": msg})
-
         case "log":
             add_log(msg_body["log_id"], msg_body["variables"])
-
         case _:
             print("unmatched command")
 

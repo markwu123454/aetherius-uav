@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useEffect, useReducer, useRef, type ReactNode} from "react";
+import React, {createContext, useContext, useEffect, useReducer, useRef, type ReactNode, useState} from "react";
 import {useApi} from "@/lib/ApiContext"
 import type {Telemetry, LogEntry} from "@/types";
 
@@ -63,6 +63,9 @@ export interface RealTimeContextProps {
     dispatch: React.Dispatch<RealTimeAction>;
     sendCommand: (msg: any) => void;
     sendRawCommand: (msg: any) => void;
+    paused: boolean;
+    setPaused: (val: boolean) => void;
+    flushBuffer: () => void;
 }
 
 const RealTimeContext = createContext<RealTimeContextProps>({
@@ -72,6 +75,11 @@ const RealTimeContext = createContext<RealTimeContextProps>({
     sendCommand: () => {
     },
     sendRawCommand: () => {
+    },
+    paused: false,
+    setPaused: () => {
+    },
+    flushBuffer: () => {
     },
 });
 
@@ -99,11 +107,44 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
     const wsRef = useRef<WebSocket | null>(null);
     const {fetchLogs} = useApi();
 
+    const [paused, setPaused] = useState(false);
+    const pausedRef = useRef(false);
+    const pendingBuffer = useRef<{ type: string, data: any }[]>([]);
+
+    const flushBuffer = () => {
+        for (const msg of pendingBuffer.current) {
+            switch (msg.type) {
+                case "telemetry":
+                    dispatch({type: "telemetry", payload: msg.data});
+                    break;
+                case "buffer":
+                    dispatch({type: "buffer", payload: msg.data});
+                    break;
+                case "log":
+                    dispatch({type: "log", payload: msg.data});
+                    break;
+                case "error_raise":
+                    dispatch({type: "error_raise", payload: msg.data});
+                    break;
+                case "error_clear":
+                    dispatch({type: "error_clear", payload: msg.data});
+                    break;
+            }
+        }
+        pendingBuffer.current = [];
+    };
+
+
+    useEffect(() => {
+        pausedRef.current = paused;
+    }, [paused]);
+
+
     useEffect(() => {
         fetchLogs()
             .then(logs => {
                 deduplicateAndSortLogs(logs).forEach(log => {
-                    dispatch({ type: "log", payload: log });
+                    dispatch({type: "log", payload: log});
                 });
             })
             .catch(err => console.error("Failed to load historical logs", err));
@@ -138,31 +179,41 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
             wsRef.current = ws;
 
             ws.onmessage = evt => {
-                try {
-                    const msg = JSON.parse(evt.data);
-                    switch (msg.type) {
-                        case "telemetry":
-                            dispatch({type: "telemetry", payload: msg.data});
-                            break;
-                        case "buffer":
-                            dispatch({type: "buffer", payload: msg.data});
-                            break;
-                        case "log":
-                            dispatch({type: "log", payload: msg.data});
-                            break;
-                        case "error_raise":
-                            dispatch({type: "error_raise", payload: msg.data});
-                            break;
-                        case "error_clear":
-                            dispatch({type: "error_clear", payload: msg.data});
-                            break;
-                        case "_":
-                            console.error(msg);
+                queueMicrotask(() => {
+                    try {
+                        const msg = JSON.parse(evt.data);
+
+                        if (!pausedRef.current) {
+                            switch (msg.type) {
+                                case "telemetry":
+                                    dispatch({type: "telemetry", payload: msg.data});
+                                    break;
+                                case "buffer":
+                                    dispatch({type: "buffer", payload: msg.data});
+                                    break;
+                                case "log":
+                                    dispatch({type: "log", payload: msg.data});
+                                    break;
+                                case "error_raise":
+                                    dispatch({type: "error_raise", payload: msg.data});
+                                    break;
+                                case "error_clear":
+                                    dispatch({type: "error_clear", payload: msg.data});
+                                    break;
+                                case "_":
+                                    console.error(msg);
+                                    break;
+                            }
+                        } else {
+                            pendingBuffer.current.push({type: msg.type, data: msg.data});
+                        }
+
+                    } catch (e) {
+                        console.error("Failed to parse WebSocket message", e);
                     }
-                } catch (e) {
-                    console.error("Failed to parse WebSocket message", e);
-                }
+                });
             };
+
 
             ws.onclose = () => {
                 retry = window.setTimeout(connect, 2000);
@@ -183,7 +234,8 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
     }, [dispatch]);
 
     return (
-        <RealTimeContext.Provider value={{state, dispatch, sendCommand, sendRawCommand}}>
+        <RealTimeContext.Provider
+            value={{state, dispatch, sendCommand, sendRawCommand, paused, setPaused, flushBuffer}}>
             {children}
         </RealTimeContext.Provider>
     );

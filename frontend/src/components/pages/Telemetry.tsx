@@ -71,7 +71,7 @@ export default function Telemetry() {
           ) : (
             <>
               {/* Scrollable Chart Section */}
-              <div className="overflow-y-auto !space-y-4 !pr-1" style={{maxHeight: "calc(100% - 120px)"}}>
+              <div className="overflow-y-auto !space-y-4 !pr-1 max-h-[calc(100%-120px)]">
 
                 {visibility.battery && (
                   <ChartCard>

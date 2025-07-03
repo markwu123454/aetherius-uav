@@ -1,199 +1,199 @@
 // Mission.tsx
-import { useEffect, useRef, useState } from "react";
+import {useEffect, useRef, useState} from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from "react-leaflet";
+import {MapContainer, Marker, Polyline, TileLayer, useMapEvents} from "react-leaflet";
 import Editor from "@monaco-editor/react";
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import {DndContext, closestCenter} from "@dnd-kit/core";
+import {SortableContext, arrayMove, useSortable, verticalListSortingStrategy} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
 import PageContainer from "@/components/ui/PageContainer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useRealTime } from "@/lib/RealTimeContext";
-import { useApi } from "@/lib/ApiContext";
-import type { Mission, Waypoint } from "@/types";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+import {useApi} from "@/lib/ApiContext";
+import type {Mission, Waypoint} from "@/types";
 
 const secondaryNames = [
-  "Ampère", "Babbage", "Chandrasekhar", "Dirac", "Euler", "Faraday", "Gödel",
-  "Hubble", "Ibn-Sina", "Joule", "Kwolek", "Lavoisier", "Maxwell", "Noether",
-  "Ohm", "Pasteur", "Quimby", "Riemann", "Sagan", "Turing", "Uhlenbeck",
-  "Volta", "Wiles", "Xu", "Yukawa", "Zworykin"
+    "Ampère", "Babbage", "Chandrasekhar", "Dirac", "Euler", "Faraday", "Gödel",
+    "Hubble", "Ibn-Sina", "Joule", "Kwolek", "Lavoisier", "Maxwell", "Noether",
+    "Ohm", "Pasteur", "Quimby", "Riemann", "Sagan", "Turing", "Uhlenbeck",
+    "Volta", "Wiles", "Xu", "Yukawa", "Zworykin"
 ];
 
 const primaryNames = [
-  "Archimedes", "Bohr", "Curie", "Daly", "Einstein", "Feynman", "Galileo",
-  "Hopper", "Ito", "Johnson", "Kepler", "Lavoisier", "Milstein", "Newton",
-  "Oppenheimer", "Planck", "Quetelet", "Rutherford", "Schrödinger", "Tesla",
-  "Urey", "Volta", "Watson", "Xie", "Yalow", "Zwicky"
+    "Archimedes", "Bohr", "Curie", "Daly", "Einstein", "Feynman", "Galileo",
+    "Hopper", "Ito", "Johnson", "Kepler", "Lavoisier", "Milstein", "Newton",
+    "Oppenheimer", "Planck", "Quetelet", "Rutherford", "Schrödinger", "Tesla",
+    "Urey", "Volta", "Watson", "Xie", "Yalow", "Zwicky"
 ];
 
 function useWaypoints() {
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
-  const [nextId, setNextId] = useState(1);
+    const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
+    const [nextId, setNextId] = useState(1);
 
-  function getPhoneticName(index: number): string {
-    const base = 26;
-    if (index < base) return primaryNames[index];
-    const first = Math.floor(index / base) - 1;
-    const second = index % base;
-    return primaryNames[first] + "-" + secondaryNames[second];
-  }
+    function getPhoneticName(index: number): string {
+        const base = 26;
+        if (index < base) return primaryNames[index];
+        const first = Math.floor(index / base) - 1;
+        const second = index % base;
+        return primaryNames[first] + "-" + secondaryNames[second];
+    }
 
-  const addWaypoint = (lat: number, lon: number) => {
-    setWaypoints(prev => [
-      ...prev,
-      {
-        id: nextId,
-        name: getPhoneticName(nextId),
-        lat,
-        lon,
-        alt: 100,
-        type: "Navigate",
-      }
-    ]);
-    setNextId(id => id + 1);
-  };
+    const addWaypoint = (lat: number, lon: number) => {
+        setWaypoints(prev => [
+            ...prev,
+            {
+                id: nextId,
+                name: getPhoneticName(nextId),
+                lat,
+                lon,
+                alt: 100,
+                type: "Navigate",
+            }
+        ]);
+        setNextId(id => id + 1);
+    };
 
-  const updateWaypoint = (id: number, updates: Partial<Waypoint>) => {
-    setWaypoints(prev => prev.map(wp => wp.id === id ? { ...wp, ...updates } : wp));
-  };
+    const updateWaypoint = (id: number, updates: Partial<Waypoint>) => {
+        setWaypoints(prev => prev.map(wp => wp.id === id ? {...wp, ...updates} : wp));
+    };
 
-  const reorderWaypoints = (oldIndex: number, newIndex: number) => {
-    setWaypoints(prev => arrayMove(prev, oldIndex, newIndex));
-  };
+    const reorderWaypoints = (oldIndex: number, newIndex: number) => {
+        setWaypoints(prev => arrayMove(prev, oldIndex, newIndex));
+    };
 
-  const removeWaypoint = (id: number) => {
-    setWaypoints(prev => prev.filter(wp => wp.id !== id));
-  };
+    const removeWaypoint = (id: number) => {
+        setWaypoints(prev => prev.filter(wp => wp.id !== id));
+    };
 
-  const clearWaypoints = () => {
-    setWaypoints([]);
-    setNextId(0);
-  };
+    const clearWaypoints = () => {
+        setWaypoints([]);
+        setNextId(0);
+    };
 
-  const setWaypointsDirect = (wps: Waypoint[]) => {
-    setWaypoints(wps);
-    const nextAvailableId = wps.reduce((max, wp) => Math.max(max, wp.id), 0) + 1;
-    setNextId(nextAvailableId);
-  };
+    const setWaypointsDirect = (wps: Waypoint[]) => {
+        setWaypoints(wps);
+        const nextAvailableId = wps.reduce((max, wp) => Math.max(max, wp.id), 0) + 1;
+        setNextId(nextAvailableId);
+    };
 
-  return {
-    waypoints,
-    addWaypoint,
-    updateWaypoint,
-    reorderWaypoints,
-    removeWaypoint,
-    clearWaypoints,
-    setWaypointsDirect,
-    getPhoneticName,
-  };
+    return {
+        waypoints,
+        addWaypoint,
+        updateWaypoint,
+        reorderWaypoints,
+        removeWaypoint,
+        clearWaypoints,
+        setWaypointsDirect,
+        getPhoneticName,
+    };
 }
 
-function ClickHandler({ onMapClick, ignoreClick }: {
-  onMapClick: (lat: number, lon: number) => void;
-  ignoreClick: React.MutableRefObject<boolean>;
+function ClickHandler({onMapClick, ignoreClick}: {
+    onMapClick: (lat: number, lon: number) => void;
+    ignoreClick: React.MutableRefObject<boolean>;
 }) {
-  useMapEvents({
-    click(e) {
-      if (!ignoreClick.current) {
-        onMapClick(e.latlng.lat, e.latlng.lng);
-      }
-    },
-  });
-  return null;
+    useMapEvents({
+        click(e) {
+            if (!ignoreClick.current) {
+                onMapClick(e.latlng.lat, e.latlng.lng);
+            }
+        },
+    });
+    return null;
 }
 
-function SortableWaypoint({ wp, selectedId, setSelectedId }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: wp.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+function SortableWaypoint({wp, selectedId, setSelectedId}: any) {
+    const {attributes, listeners, setNodeRef, transform, transition} = useSortable({id: wp.id});
+    const style = {transform: CSS.Transform.toString(transform), transition};
 
-  return (
-    <li
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center text-sm !p-1 cursor-pointer rounded ${selectedId === wp.id ? 'bg-zinc-700' : 'hover:bg-zinc-800'}`}
-      onClick={() => setSelectedId(wp.id)}
-    >
+    return (
+        <li
+            ref={setNodeRef}
+            style={style}
+            className={`flex items-center text-sm !p-1 cursor-pointer rounded ${selectedId === wp.id ? 'bg-zinc-700' : 'hover:bg-zinc-800'}`}
+            onClick={() => setSelectedId(wp.id)}
+        >
       <span {...attributes} {...listeners} className="mr-2 cursor-move select-none">
         ☰
       </span>
-      <div>
-        <strong>{wp.name}</strong>: {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} ({wp.alt}m)
-      </div>
-    </li>
-  );
+            <div>
+                <strong>{wp.name}</strong>: {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} ({wp.alt}m)
+            </div>
+        </li>
+    );
 }
 
-function DynamicTileLayer({ satellite }: { satellite: boolean }) {
-  const tileUrl = satellite
-    ? "https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
+function DynamicTileLayer({satellite}: { satellite: boolean }) {
+    const tileUrl = satellite
+        ? "https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
 
-  return <TileLayer url={tileUrl} subdomains={satellite ? [] : ["a", "b", "c"]} maxNativeZoom={22} maxZoom={22} />;
+    return <TileLayer url={tileUrl} subdomains={satellite ? [] : ["a", "b", "c"]} maxNativeZoom={22} maxZoom={22}/>;
 }
 
 export function MissionPlanner() {
-  const {
-    waypoints,
-    addWaypoint,
-    updateWaypoint,
-    reorderWaypoints,
-    removeWaypoint,
-    clearWaypoints,
-    setWaypointsDirect,
-    getPhoneticName,
-  } = useWaypoints();
+    const {
+        waypoints,
+        addWaypoint,
+        updateWaypoint,
+        reorderWaypoints,
+        removeWaypoint,
+        clearWaypoints,
+        setWaypointsDirect,
+        getPhoneticName,
+    } = useWaypoints();
 
-  const uavPosition: [number, number] = [34.029758, -117.7929415];
-  const ignoreClick = useRef(false);
-  const [satelliteView, setSatelliteView] = useState(false);
+    const uavPosition: [number, number] = [34.029758, -117.7929415];
+    const ignoreClick = useRef(false);
+    const [satelliteView, setSatelliteView] = useState(false);
 
-  const [cruiseSpeed, setCruiseSpeed] = useState(5);
-  const [loiterRadius, setLoiterRadius] = useState(15);
-  const [takeoffAltitude, setTakeoffAltitude] = useState(250);
-  const [landingDescentRate, setLandingDescentRate] = useState(0.5);
-  const [loopMission, setLoopMission] = useState(false);
-  const [returnToLaunch, setReturnToLaunch] = useState(true);
-  const [abortAltitude, setAbortAltitude] = useState(5);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<Map<string, File>>(new Map());
+    const [cruiseSpeed, setCruiseSpeed] = useState(5);
+    const [loiterRadius, setLoiterRadius] = useState(15);
+    const [takeoffAltitude, setTakeoffAltitude] = useState(250);
+    const [landingDescentRate, setLandingDescentRate] = useState(0.5);
+    const [loopMission, setLoopMission] = useState(false);
+    const [returnToLaunch, setReturnToLaunch] = useState(true);
+    const [abortAltitude, setAbortAltitude] = useState(5);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [uploadedFiles, setUploadedFiles] = useState<Map<string, File>>(new Map());
 
-  const [processedMission, setProcessedMission] = useState<null | {
-    total_distance_km: number;
-    estimated_time_min: number;
-    errors: string[];
-    flight_path?: { lat: number; lon: number; alt: number }[];
-    available_logic?: {
-      file: string;
-      class: string;
-      method: string;
-      parameters: string[];
-    }[];
-  }>(null);
+    const [processedMission, setProcessedMission] = useState<null | {
+        total_distance_km: number;
+        estimated_time_min: number;
+        errors: string[];
+        flight_path?: { lat: number; lon: number; alt: number }[];
+        available_logic?: {
+            file: string;
+            class: string;
+            method: string;
+            parameters: string[];
+        }[];
+    }>(null);
 
-  const { sendMission, fetchProcessedMission, fetchAutosaveMission } = useApi();
+    const {sendMission, fetchProcessedMission, fetchAutosaveMission} = useApi();
 
-  const [autosaveReady, setAutosaveReady] = useState(false);
 
-  const buildLogicFileMap = async (): Promise<{ [filename: string]: string }> => {
-    const entries = await Promise.all(
-      Array.from(uploadedFiles.entries()).map(async ([filename, file]) => {
-        const text = await file.text();
-        return [filename, text] as [string, string];
-      })
-    );
-    return Object.fromEntries(entries);
-  };
+    const [autosaveReady, setAutosaveReady] = useState(false);
 
-  const rebuildFileMapFromStrings = (logic_files: { [filename: string]: string }) => {
-    const map = new Map<string, File>();
-    for (const [name, content] of Object.entries(logic_files)) {
-      const file = new File([content], name, { type: "text/x-python" });
-      map.set(name, file);
-    }
-    setUploadedFiles(map);
+    const buildLogicFileMap = async (): Promise<{ [filename: string]: string }> => {
+        const entries = await Promise.all(
+            Array.from(uploadedFiles.entries()).map(async ([filename, file]) => {
+                const text = await file.text();
+                return [filename, text] as [string, string];
+            })
+        );
+        return Object.fromEntries(entries);
+    };
+
+    const rebuildFileMapFromStrings = (logic_files: { [filename: string]: string }) => {
+        const map = new Map<string, File>();
+        for (const [name, content] of Object.entries(logic_files)) {
+            const file = new File([content], name, {type: "text/x-python"});
+            map.set(name, file);
+        }
+        setUploadedFiles(map);
     };
 
 
@@ -314,7 +314,7 @@ export function MissionPlanner() {
                     {/*--------------*/}
                     {/* Left sidebar */}
                     {/*--------------*/}
-                    <div className="w-[20%] h-[calc(100%-16px)] flex flex-col gap-4">
+                    <div className="w-[20%] h-full flex flex-col gap-4">
 
                         {/* Waypoints */}
                         <Card className="bg-zinc-900 h-[33%] flex flex-col !p-0">
@@ -480,12 +480,13 @@ export function MissionPlanner() {
                                             </>
                                         )}
 
-                                        <button
-                                            className="mt-2 w-full border-red-700 transition-colors hover:!text-red-500 text-white !py-1 rounded"
+                                        <Button
+                                            className="!mt-2 !w-full !py-1"
+                                            variant="destructive"
                                             onClick={() => removeWaypoint(selected.id!)}
                                         >
                                             Delete Waypoint
-                                        </button>
+                                        </Button>
                                     </>
                                 ) : (
                                     <p className="text-zinc-500">Select a waypoint to edit</p>
@@ -510,7 +511,6 @@ export function MissionPlanner() {
                                     draggable
                                     eventHandlers={{
                                         dragstart: () => {
-                                            pause_ws.mission = true;
                                             ignoreClick.current = true;
                                         },
                                         dragend: e => {
@@ -518,10 +518,9 @@ export function MissionPlanner() {
                                             updateWaypoint(wp.id, {lat, lon: lng});
                                             setTimeout(() => {
                                                 ignoreClick.current = false;
-                                                pause_ws.mission = false;
-                                                flushDeferredTelemetry();
                                             }, 0);
                                         }
+
                                     }}
                                     icon={makeWpIcon(wp, i)}
                                 />
@@ -623,11 +622,11 @@ export function MissionPlanner() {
                             <CardHeader>
                                 <CardTitle>Mission Logic Files</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-2 text-sm text-zinc-300">
+                            <CardContent className="!space-y-2 text-sm text-zinc-300">
 
                                 <label
                                     htmlFor="logic-files"
-                                    className="inline-block bg-zinc-800 text-zinc-300 px-3 py-1 rounded !border !border-zinc-600 !p-1 cursor-pointer hover:bg-zinc-700 text-xs"
+                                    className="inline-block bg-zinc-800 text-zinc-300 !px-3 !py-1 rounded !border !border-zinc-600 !p-1 cursor-pointer hover:bg-zinc-700 text-xs"
                                 >
                                     Choose Files
                                 </label>
@@ -651,7 +650,7 @@ export function MissionPlanner() {
                                     {[...uploadedFiles.entries()].map(([name, file]) => (
                                         <li
                                             key={name}
-                                            className="flex items-center justify-between bg-zinc-800 px-2 py-1 rounded"
+                                            className="flex items-center justify-between bg-zinc-800 !px-2 !py-1 !rounded"
                                         >
                                             <span className="truncate">{name}</span>
                                             <Button
@@ -677,16 +676,16 @@ export function MissionPlanner() {
                             <CardHeader>
                                 <CardTitle>Mission Actions</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-2">
-                                <Button className="w-full py-1" variant="outline">
+                            <CardContent className="!space-y-2">
+                                <Button className="w-full !py-1" variant="outline">
                                     Load from File
                                 </Button>
 
-                                <Button className="w-full py-1" variant="outline">
+                                <Button className="w-full !py-1" variant="outline">
                                     Export to File
                                 </Button>
 
-                                <Button className="w-full py-1" variant="destructive" onClick={() => clearWaypoints()}>
+                                <Button className="w-full !py-1" variant="destructive" onClick={() => clearWaypoints()}>
                                     Clear Waypoints
                                 </Button>
 

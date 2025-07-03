@@ -19,6 +19,16 @@ export interface LogFilterOptions {
    * Default: all.
    */
   severity?: string[];
+  /**
+   * Which category prefixes (1st 2 chars) to include. e.g. ['GC', 'NW']
+   * Default: all.
+   */
+  categories?: string[];
+  /**
+   * Which log id(5th and 6th chars) to include. e.g. ['0','1']
+   * Default: all.
+   */
+  log_number?: string;
 }
 
 /**
@@ -29,14 +39,22 @@ export function shouldDisplayLog(
   options: LogFilterOptions = {}
 ): boolean {
   const idStr = String(entry.log_id);
-  const imp = idStr.charAt(3);
+  const cat = idStr.slice(0, 2);
   const sev = idStr.charAt(2);
+  const imp = idStr.charAt(3);
+  const num = idStr.slice(4, 6);
+
+  // Category filter: default allow all
+  if (options.categories && !options.categories.includes(cat)) return false;
+
+  // Severity filter: default include all
+  if (options.severity && !options.severity.includes(sev)) return false;
 
   // Importance filter: default allow all
   if (options.importance && !options.importance.includes(imp)) return false;
 
-  // Severity filter: default include all
-  if (options.severity && !options.severity.includes(sev)) return false;
+  // Importance filter: default allow all
+  if (options.log_number && !num.includes(options.log_number)) return false;
 
   return true;
 }
