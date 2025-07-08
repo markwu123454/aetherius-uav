@@ -49,7 +49,7 @@ aetherius-uav/
 **Frontend:**
 
 ```bash
-cd frontend
+cd frontend-old
 npm install
 npm run dev
 ```
@@ -88,3 +88,18 @@ python3 run_gcs.py
 - [ ] Cesium 3d map
 - [ ] Live camera
 - [ ] Lidar 3d map
+
+
+Big problems i've had to solve so far:
+- Tailwind not loading
+- Page not loading
+- Pi not connecting to wifi
+- Pi not ssh-ing
+- Rechart not working
+- Cesium not working
+- Pixhawk not calibrating
+- Pi crashing after a while
+- Websocket not reconnecting
+- Mavlink dying
+- Mavlink freezing
+- Tailwind not working

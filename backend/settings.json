@@ -1,0 +1,10 @@
+{
+    "language": "en",
+    "theme": "dark",
+    "uiScale": 1.0,
+    "showGridOverlay": true,
+    "defaultMapZoom": 13,
+    "units": "metric",
+    "autoConnectOnStartup": false,
+    "logPanelVisible": true
+}

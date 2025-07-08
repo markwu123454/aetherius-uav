@@ -178,15 +178,15 @@ export default function DriverStation() {
             </PopupModal>
 
             <div
-                className="fixed bottom-0 left-0 w-full !h-[240px] bg-zinc-900 border-t border-zinc-800 z-50 shadow-xl !px-6 !py-4 text-sm font-mono">
-                <div className="flex justify-between !h-full !gap-6">
+                className="fixed bottom-0 left-0 w-full h-[240px] bg-zinc-900 border-t border-zinc-800 z-50 shadow-xl px-3 py-3 text-sm font-mono">
+                <div className="flex justify-between h-full gap-3">
 
                     {/* Telemetry */}
-                    <Card className="w-1/3 bg-zinc-800 !text-zinc-200 !p-2">
-                        <CardHeader className="!p-2">
+                    <Card className="w-1/3 bg-zinc-800 text-zinc-200 p-2">
+                        <CardHeader className="p-2">
                             <CardTitle>Telemetry</CardTitle>
                         </CardHeader>
-                        <CardContent className="!space-y-1 !px-2">
+                        <CardContent className="space-y-1 px-2">
                             <div>Battery: {sys.current_battery ?? "—"}</div>
                             <div>Latitude: {gps.lat ? gps.lat / 1e7 : "—"}</div>
                             <div>Longitude: {gps.lon ? gps.lon / 1e7 : "—"}</div>
@@ -200,15 +200,15 @@ export default function DriverStation() {
                     </Card>
 
                     {/* Controls */}
-                    <Card className="w-1/3 bg-zinc-800 !text-zinc-200 !p-2 overflow-y-auto scrollbar-dark">
-                        <CardHeader className="!p-2"><CardTitle>Controls</CardTitle></CardHeader>
-                        <CardContent className="!space-y-4 ">
+                    <Card className="w-1/3 bg-zinc-800 text-zinc-200 p-2 overflow-y-auto scrollbar-dark">
+                        <CardHeader className="p-2"><CardTitle>Controls</CardTitle></CardHeader>
+                        <CardContent className="space-y-4 ">
                             <div className="flex flex-wrap gap-2">
                                 <Button variant="outline" onClick={sendArm}>ARM</Button>
                                 <Button variant="outline" onClick={sendDisarm}>DISARM</Button>
                                 <Button variant="outline" onClick={sendManual}>MANUAL</Button>
                                 <Button variant="outline" onClick={sendRTL}>RTL</Button>
-                                <HoldToConfirmButton onConfirm={sendDisarm}>ABORT</HoldToConfirmButton>
+                                <HoldToConfirmButton variant="destructive" onConfirm={sendDisarm}>ABORT</HoldToConfirmButton>
                             </div>
 
                             {/* Custom MAVLink */}
@@ -241,13 +241,13 @@ export default function DriverStation() {
                     </Card>
 
                     {/* Logs */}
-                    <Card className="w-1/3 bg-zinc-800 text-zinc-200 !p-2">
-                        <CardHeader className="!p-2">
+                    <Card className="w-1/3 bg-zinc-800 text-zinc-200 p-2">
+                        <CardHeader className="p-2">
                             <CardTitle>Logs</CardTitle>
                         </CardHeader>
                         <CardContent
                             ref={logContainerRef}
-                            className="!p-0 overflow-y-auto !max-h-40 !px-2 !space-y-1 scrollbar-dark"
+                            className="p-0 overflow-y-auto max-h-40 px-2 space-y-1 scrollbar-dark"
                         >
                             {displayed.length > 0 ? displayed : (
                                 <p className="italic text-zinc-500">No important logs</p>

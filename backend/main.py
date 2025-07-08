@@ -1,4 +1,7 @@
+import json
+import os
 from collections import defaultdict
+from http.client import HTTPException
 from typing import Optional, Any, Dict, List, Callable, Awaitable
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -96,7 +99,7 @@ def save_telemetry_to_csv():
 
 app = FastAPI(lifespan=lifespan)
 
-# === CORS for React frontend ===
+# === CORS for React frontend-old ===
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -360,6 +363,33 @@ async def get_command_long(
     send_cmd(command, params)
 
 
+@app.post("/api/setting/update")
+async def get_command_long(
+        setting: str = None,
+        value: Any = None
+):
+    # Load existing settings
+    try:
+        with open("settings.json", "r") as f:
+            settings = json.load(f)
+        settings[setting] = value
+        with open("settings.json", "w") as f:
+            json.dump(settings, f, indent=4)
+        return {"status": "ok", "updated": {setting: value}}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": repr(e)})
+
+
+@app.get("/api/setting/full")
+async def get_setting_full():
+    try:
+        with open("settings.json", "r") as f:
+            settings = json.load(f)
+        return {"settings": settings}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": repr(e)})
+
+
 
 
 @app.get("/api/command/command_int")
@@ -385,7 +415,7 @@ async def live_socket(websocket: WebSocket):
                 msg = await send_queue.get()
                 await websocket.send_json(msg)
         except (asyncio.CancelledError, WebSocketDisconnect):
-            pass
+            print("WebSocket disconnected")
 
     async def telemetry_loop():
         try:
@@ -403,10 +433,21 @@ async def live_socket(websocket: WebSocket):
         except (asyncio.CancelledError, WebSocketDisconnect):
             pass
 
+    async def heartbeat_loop():
+        try:
+            while True:
+                for _, queue in connections:
+                    await queue.put({"type": "heartbeat"})
+                    print("heartbeat")
+                await asyncio.sleep(1)
+        except (asyncio.CancelledError, WebSocketDisconnect):
+            pass
+
+
     sender_task = asyncio.create_task(sender_loop())
     telemetry_task = asyncio.create_task(telemetry_loop())
     command_task = asyncio.create_task(command_loop())
-
+    #heartbeat_task = asyncio.create_task(heartbeat_loop())
     try:
         await command_task
     finally:

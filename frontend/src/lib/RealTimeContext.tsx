@@ -113,6 +113,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
 
     const flushBuffer = () => {
         for (const msg of pendingBuffer.current) {
+            console.log("message")
             switch (msg.type) {
                 case "telemetry":
                     dispatch({type: "telemetry", payload: msg.data});
@@ -129,6 +130,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
                 case "error_clear":
                     dispatch({type: "error_clear", payload: msg.data});
                     break;
+
             }
         }
         pendingBuffer.current = [];
@@ -178,11 +180,17 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
             const ws = new WebSocket(`ws://${window.location.hostname}:55050/ws/telemetry`);
             wsRef.current = ws;
 
+            ws.onopen = () => {
+                console.warn("WebSocket opened");
+                setPaused(false);
+                flushBuffer(); // <--- flush only after confirmed open
+            };
+
+
             ws.onmessage = evt => {
                 queueMicrotask(() => {
                     try {
                         const msg = JSON.parse(evt.data);
-
                         if (!pausedRef.current) {
                             switch (msg.type) {
                                 case "telemetry":
@@ -200,6 +208,9 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
                                 case "error_clear":
                                     dispatch({type: "error_clear", payload: msg.data});
                                     break;
+                                case "heartbeat":
+                                    console.log("heartbeat")
+                                    break;
                                 case "_":
                                     console.error(msg);
                                     break;
@@ -216,6 +227,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
 
 
             ws.onclose = () => {
+                console.warn("WebSocket closed");
                 retry = window.setTimeout(connect, 2000);
             };
 
@@ -231,7 +243,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
             wsRef.current?.close();
             clearTimeout(retry);
         };
-    }, [dispatch]);
+    }, []);
 
     return (
         <RealTimeContext.Provider

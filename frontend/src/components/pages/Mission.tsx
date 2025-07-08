@@ -307,9 +307,9 @@ export function MissionPlanner() {
 
     return (
         <PageContainer>
-            <div className="w-full h-full bg-zinc-950 text-zinc-200 font-mono !p-6">
+            <div className="w-full h-full bg-zinc-950 text-zinc-200 font-mono p-6">
                 <h1 className="text-3xl font-bold mb-4 text-white">Mission Planner</h1>
-                <div className="w-full h-[calc(100%-20px)] flex gap-4">
+                <div className="w-full h-[calc(100%-40px)] flex gap-4">
 
                     {/*--------------*/}
                     {/* Left sidebar */}
@@ -317,13 +317,13 @@ export function MissionPlanner() {
                     <div className="w-[20%] h-full flex flex-col gap-4">
 
                         {/* Waypoints */}
-                        <Card className="bg-zinc-900 h-[33%] flex flex-col !p-0">
-                            <div className="!p-4 pb-0">
-                                <CardHeader className="!p-0">
+                        <Card className="bg-zinc-900 h-[33%] flex flex-col p-0">
+                            <div className="p-4">
+                                <CardHeader className="p-0">
                                     <CardTitle>Waypoints</CardTitle>
                                 </CardHeader>
                             </div>
-                            <CardContent className="overflow-auto scrollbar-dark flex-1 !px-4 !pb-4">
+                            <CardContent className="overflow-auto scrollbar-dark flex-1 px-4 pb-4">
                                 <DndContext
                                     collisionDetection={closestCenter}
                                     onDragEnd={({active, over}) => {
@@ -336,7 +336,7 @@ export function MissionPlanner() {
                                 >
                                     <SortableContext items={waypoints.map(w => w.id)}
                                                      strategy={verticalListSortingStrategy}>
-                                        <ul className="!space-y-1">
+                                        <ul className="space-y-1">
                                             {waypoints.map((wp, i) => (
                                                 <SortableWaypoint
                                                     key={wp.id}
@@ -353,46 +353,46 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Edit Waypoint */}
-                        <Card className="bg-zinc-900 h-[67%] flex flex-col !p-0">
-                            <div className="!p-4 pb-0">
-                                <CardHeader className="!p-0">
+                        <Card className="bg-zinc-900 h-[67%] flex flex-col p-0">
+                            <div className="p-4">
+                                <CardHeader className="p-0">
                                     <CardTitle>Edit Waypoint</CardTitle>
                                 </CardHeader>
                             </div>
                             <CardContent
-                                className="overflow-y-auto flex-grow scrollbar-dark !px-4 !pb-4 !space-y-2 text-sm">
+                                className="overflow-y-auto flex-grow scrollbar-dark px-4 pb-4 space-y-2 text-sm">
                                 {selected ? (
                                     <>
-                                        <label className="block !mt-4">Name</label>
+                                        <label className="block mt-4">Name</label>
                                         <Input
                                             value={selected.name || ""}
                                             onChange={e => updateWaypoint(selected.id, {name: e.target.value})}
                                         />
 
-                                        <label className="block !mt-4">Latitude</label>
+                                        <label className="block mt-4">Latitude</label>
                                         <Input
                                             type="number"
                                             value={selected.lat}
                                             onChange={e => updateWaypoint(selected.id, {lat: parseFloat(e.target.value)})}
                                         />
 
-                                        <label className="block !mt-4">Longitude</label>
+                                        <label className="block mt-4">Longitude</label>
                                         <Input
                                             type="number"
                                             value={selected.lon}
                                             onChange={e => updateWaypoint(selected.id, {lon: parseFloat(e.target.value)})}
                                         />
 
-                                        <label className="block !mt-4">Altitude (m)</label>
+                                        <label className="block mt-4">Altitude (m)</label>
                                         <Input
                                             type="number"
                                             value={selected.alt}
                                             onChange={e => updateWaypoint(selected.id, {alt: parseFloat(e.target.value)})}
                                         />
 
-                                        <label className="block !mt-4">Type</label>
+                                        <label className="block mt-4">Type</label>
                                         <select
-                                            className="w-full bg-zinc-800 !p-1 rounded text-sm"
+                                            className="w-full bg-zinc-800 p-1 rounded text-sm"
                                             value={selected.type}
                                             onChange={e =>
                                                 updateWaypoint(selected.id, {type: e.target.value as Waypoint["type"]})
@@ -408,7 +408,7 @@ export function MissionPlanner() {
                                         {/* CONDITIONAL CHECK */}
                                         {selected.type === "Conditional" && (
                                             <>
-                                                <label className="block !mt-4">Condition</label>
+                                                <label className="block mt-4">Condition</label>
                                                 <div className="rounded border border-zinc-700">
                                                     <Editor
                                                         height="100px"
@@ -426,7 +426,7 @@ export function MissionPlanner() {
                                                         }}
                                                     />
                                                 </div>
-                                                <label className="block !mt-4">
+                                                <label className="block mt-4">
                                                     Must be a Python conditional expression.
                                                     <span
                                                         className="ml-1 text-xs text-zinc-500 cursor-help"
@@ -446,7 +446,7 @@ export function MissionPlanner() {
                                         {/* MISSION FUNCTION */}
                                         {selected.type === "MissionAction" && (
                                             <>
-                                                <label className="block !mt-4">Function Name</label>
+                                                <label className="block mt-4">Function Name</label>
                                                 <Input
                                                     value={selected.function || ""}
                                                     onChange={e =>
@@ -455,7 +455,7 @@ export function MissionPlanner() {
                                                     placeholder="e.g., check_battery"
                                                 />
 
-                                                <label className="block !mt-4">Parameters (JSON)</label>
+                                                <label className="block mt-4">Parameters (JSON)</label>
                                                 <div className="rounded border border-zinc-700">
                                                     <Editor
                                                         height="100px"
@@ -481,7 +481,7 @@ export function MissionPlanner() {
                                         )}
 
                                         <Button
-                                            className="!mt-2 !w-full !py-1"
+                                            className="mt-2 w-full py-1"
                                             variant="destructive"
                                             onClick={() => removeWaypoint(selected.id!)}
                                         >
@@ -538,7 +538,7 @@ export function MissionPlanner() {
 
                         <button
                             onClick={() => setSatelliteView(prev => !prev)}
-                            className="absolute bottom-4 right-4 z-[1000] !bg-zinc-800/50 text-white px-4 py-2 rounded shadow !hover:bg-zinc-700 !p-1 backdrop-blur-sm"
+                            className="absolute bottom-4 right-4 z-[1000] bg-zinc-800/50 text-white px-4 py-2 rounded shadow hover:bg-zinc-700 p-1 backdrop-blur-sm"
                         >
                             {satelliteView ? "Switch to Map" : "Switch to Satellite"}
                         </button>
@@ -547,10 +547,10 @@ export function MissionPlanner() {
                     {/*-------------*/}
                     {/* Right panel */}
                     {/*-------------*/}
-                    <div className="w-[20%] min-w-[200px] !space-y-4 !overflow-y-auto scrollbar-dark">
+                    <div className="w-[20%] min-w-[200px] space-y-4 overflow-y-auto scrollbar-dark">
 
                         {/* Mission Overview */}
-                        <Card className='bg-zinc-900 !p-4 !space-y-4'>
+                        <Card className='bg-zinc-900 p-4 space-y-4'>
                             <CardHeader>
                                 <CardTitle>Mission Overview</CardTitle>
                             </CardHeader>
@@ -575,28 +575,28 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Flight Parameters */}
-                        <Card className='bg-zinc-900 !p-4 !space-y-4'>
+                        <Card className='bg-zinc-900 p-4 space-y-4'>
                             <CardHeader>
                                 <CardTitle>Flight Parameters</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <label className="block !mt-4">Cruise Speed (m/s)</label>
+                                <label className="block mt-4">Cruise Speed (m/s)</label>
                                 <Input type="number" value={cruiseSpeed}
                                        onChange={(e) => setCruiseSpeed(Number(e.target.value))}/>
-                                <label className="block !mt-4">Loiter Radius (m)</label>
+                                <label className="block mt-4">Loiter Radius (m)</label>
                                 <Input type="number" value={loiterRadius}
                                        onChange={(e) => setLoiterRadius(Number(e.target.value))}/>
-                                <label className="block !mt-4">Takeoff Altitude (m)</label>
+                                <label className="block mt-4">Takeoff Altitude (m)</label>
                                 <Input type="number" value={takeoffAltitude}
                                        onChange={(e) => setTakeoffAltitude(Number(e.target.value))}/>
-                                <label className="block !mt-4">Landing Descent Rate (m/s)</label>
+                                <label className="block mt-4">Landing Descent Rate (m/s)</label>
                                 <Input type="number" value={landingDescentRate}
                                        onChange={(e) => setLandingDescentRate(Number(e.target.value))}/>
                             </CardContent>
                         </Card>
 
                         {/* Mission Settings */}
-                        <Card className='bg-zinc-900 !p-4 !space-y-4'>
+                        <Card className='bg-zinc-900 p-4 space-y-4'>
                             <CardHeader>
                                 <CardTitle>Mission Settings</CardTitle>
                             </CardHeader>
@@ -618,15 +618,15 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Mission Logic Files */}
-                        <Card className="bg-zinc-900 !p-4 !space-y-4">
+                        <Card className="bg-zinc-900 p-4 space-y-4">
                             <CardHeader>
                                 <CardTitle>Mission Logic Files</CardTitle>
                             </CardHeader>
-                            <CardContent className="!space-y-2 text-sm text-zinc-300">
+                            <CardContent className="space-y-2 text-sm text-zinc-300">
 
                                 <label
                                     htmlFor="logic-files"
-                                    className="inline-block bg-zinc-800 text-zinc-300 !px-3 !py-1 rounded !border !border-zinc-600 !p-1 cursor-pointer hover:bg-zinc-700 text-xs"
+                                    className="inline-block bg-zinc-800 text-zinc-300 px-3 py-1 rounded border border-zinc-600 p-1 cursor-pointer hover:bg-zinc-700 text-xs"
                                 >
                                     Choose Files
                                 </label>
@@ -646,11 +646,11 @@ export function MissionPlanner() {
                                     }}
                                 />
 
-                                <ul className="!space-y-1">
+                                <ul className="space-y-1">
                                     {[...uploadedFiles.entries()].map(([name, file]) => (
                                         <li
                                             key={name}
-                                            className="flex items-center justify-between bg-zinc-800 !px-2 !py-1 !rounded"
+                                            className="flex items-center justify-between bg-zinc-800 px-2 py-1 rounded"
                                         >
                                             <span className="truncate">{name}</span>
                                             <Button
@@ -672,20 +672,20 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Mission Actions */}
-                        <Card className='bg-zinc-900 !p-4 !space-y-4'>
+                        <Card className='bg-zinc-900 p-4 space-y-4'>
                             <CardHeader>
                                 <CardTitle>Mission Actions</CardTitle>
                             </CardHeader>
-                            <CardContent className="!space-y-2">
-                                <Button className="w-full !py-1" variant="outline">
+                            <CardContent className="space-y-2">
+                                <Button className="w-full py-1" variant="outline">
                                     Load from File
                                 </Button>
 
-                                <Button className="w-full !py-1" variant="outline">
+                                <Button className="w-full py-1" variant="outline">
                                     Export to File
                                 </Button>
 
-                                <Button className="w-full !py-1" variant="destructive" onClick={() => clearWaypoints()}>
+                                <Button className="w-full py-1" variant="destructive" onClick={() => clearWaypoints()}>
                                     Clear Waypoints
                                 </Button>
 

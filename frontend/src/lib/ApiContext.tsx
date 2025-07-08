@@ -1,6 +1,6 @@
 // src/context/ApiContext.tsx
 import {createContext, useContext, type ReactNode, useCallback} from "react";
-import type {Telemetry, LogEntry, Mission, ProcessedMission} from "@/types";
+import type {Telemetry, LogEntry, Mission, ProcessedMission, SettingValue, SettingsMap} from "@/types";
 
 export interface ApiContextProps {
     fetchTelemetry: (start?: number, end?: number) => Promise<Partial<Telemetry>[]>;
@@ -9,16 +9,19 @@ export interface ApiContextProps {
     fetchProcessedMission: () => Promise<ProcessedMission | null>;
     fetchAutosaveMission: () => Promise<Mission | null>;
     sendCommandLong: (command: number | string, params: (number | string)[]) => Promise<void>;
+    updateSetting: (setting: string, value: SettingValue) => Promise<any>;
+    fetchFullSettings: () => Promise<Record<string, SettingValue>>;
 }
 
 const ApiContext = createContext<ApiContextProps>({
     fetchTelemetry: async () => [],
     fetchLogs: async () => [],
-    sendMission: async () => {
-    },
+    sendMission: async () => {},
     fetchProcessedMission: async () => null,
     fetchAutosaveMission: async () => null,
-    sendCommandLong: async () => null,
+    sendCommandLong: async () => {},
+    updateSetting: async () => ({}),
+    fetchFullSettings: async () => ({}),
 });
 
 export const useApi = () => useContext(ApiContext);
@@ -65,17 +68,38 @@ export function ApiProvider({children}: { children: ReactNode }) {
     }, []);
 
     const sendCommandLong = useCallback(async (command: number | string, params: (number | string)[]) => {
-    try {
-        const res = await fetch(`http://${window.location.hostname}:55050/api/command/command_long`, {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:55050/api/command/command_long`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({command, params}),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+            console.error("Command failed", err);
+        }
+    }, []);
+
+    const updateSetting = useCallback(async (setting: string, value: SettingValue) => {
+        const res = await fetch(`http://${window.location.hostname}:55050/api/setting/update`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command, params }),
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({setting, value}),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch (err) {
-        console.error("Command failed", err);
-    }
-}, []);
+        if (!res.ok) {
+            throw new Error(`Failed to update setting: ${res.status} ${res.statusText}`);
+        }
+        return await res.json();  // { status: "ok", updated: {setting: value} }
+    }, []);
+
+    const fetchFullSettings = useCallback(async (): Promise<SettingsMap> => {
+        const res = await fetch(`http://${window.location.hostname}:55050/api/setting/full`);
+        if (!res.ok) {
+            throw new Error(`Failed to fetch settings: ${res.status} ${res.statusText}`);
+        }
+        const data = await res.json();
+        return data.settings;
+    }, []);
 
 
     return (
@@ -86,6 +110,8 @@ export function ApiProvider({children}: { children: ReactNode }) {
             fetchProcessedMission,
             fetchAutosaveMission,
             sendCommandLong,
+            updateSetting,
+            fetchFullSettings,
         }}>
             {children}
         </ApiContext.Provider>

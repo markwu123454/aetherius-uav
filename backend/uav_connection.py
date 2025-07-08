@@ -15,6 +15,7 @@ class UAVConnection:
         self.websocket = None
         self.state = defaultdict(dict)
         self.logs = []
+        self.params = None
         self.data = None
         self.log_callback = None
         self.telem_callback = None
@@ -96,6 +97,9 @@ class UAVConnection:
                     "msg": msg_body
                 })
 
+            case "pong":
+                pass  # acknowledge pong, no-op
+
             case "Log":
                 self._log_task(
                     log_id=msg.get("log_id", "XE9999"),
@@ -115,6 +119,9 @@ class UAVConnection:
 
             case "changelog_batch":
                 pass
+
+            case "params":
+                self.params = msg_body
 
             case "command_response":
                 print(f"command response: {msg}")

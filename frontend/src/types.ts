@@ -1,54 +1,7 @@
 // ./src/types.ts
-
-/*
 export type LogEntry = {
-    id?: number;
-    timestamp: string;
-    message: string;
-    importance: "minor" | "major" | "critical";
-    severity: "info" | "warning" | "error" | "system" | "debug";
-    source: "Pixhawk" | "Telemetry" | "Network" | "AI" | "Vision" | "GCS" | "Mission" | "System" | "RPi";
-};
-
-export type TelemetryPoint = {
-    timestamp: string;
-    lat: number;
-    lon: number;
-    sats: number;
-    hdop: number;
-    voltage: number;
-    current: number;
-    percent: number;
-    rssi: string;
-    ping: string;
-    videoLatency: string;
-    mode: string;
-    armed: boolean;
-};
-
-export type GPSData = { lat: number | string; lon: number | string; sats: number | string; hdop: number | string };
-
-export type BatteryData = { voltage: number; current: number; percent: number | string };
-
-export type TelemetryState = {
-    gps: GPSData;
-    battery: BatteryData;
-    mode: string;
-    armed: boolean;
-    rssi: string;
-    ping: string;
-    videoLatency: string;
-    recording: boolean;
-    connected: boolean;
-    uavConnected: boolean;
-    logs: LogEntry[];
-    telemetryBuffer: TelemetryPoint[];
-};
-*/
-
-export type LogEntry = {
-    timestamp: number;            // ISO or epoch-string
-    log_id: string;               // renamed from `id` to match payload
+    timestamp: number;
+    log_id: string;
     variables?: Record<string, any>;
 };
 
@@ -453,3 +406,6 @@ export interface Mission {
     };
 }
 
+// Settings
+export type SettingValue = string | number | boolean | Record<string, any> | null;
+export type SettingsMap = Record<string, SettingValue>;

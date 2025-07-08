@@ -184,13 +184,18 @@ class PixHawkClient:
             self.temps.pop("params", None)
 
             self._log("PX0003", {"number": len(self.params)})
+            self.send_msg({"type": "params", "msg": self.params})
 
     async def _temp_sequence(self) -> None:
-        await asyncio.sleep(6)
-        while True:
-            for stream in get_args(streams):
-                self.request_rate(stream, 1)
-            await asyncio.sleep(10)
+        await asyncio.sleep(3)
+        self.request_rate("MAV_DATA_STREAM_RAW_SENSORS", 1)
+        self.request_rate("MAV_DATA_STREAM_EXTENDED_STATUS", 1)
+        self.request_rate("MAV_DATA_STREAM_RC_CHANNELS", 3)
+        self.request_rate("MAV_DATA_STREAM_RAW_CONTROLLER", 1)
+        self.request_rate("MAV_DATA_STREAM_POSITION", 5)
+        self.request_rate("MAV_DATA_STREAM_EXTRA1", 10)
+        self.request_rate("MAV_DATA_STREAM_EXTRA2", 5)
+        self.request_rate("MAV_DATA_STREAM_EXTRA3", 2)
 
     async def _connect(self) -> None:
         # Wait for device to appear

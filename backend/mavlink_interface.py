@@ -115,7 +115,7 @@ class mavlink_interface:
         pass
 
     def stream_telemetry(self):
-        """TO-DO: Run continuous loop to receive telemetry and forward to frontend."""
+        """TO-DO: Run continuous loop to receive telemetry and forward to frontend-old."""
         # Could use GLOBAL_POSITION_INT, SYS_STATUS, ATTITUDE
         pass
 
