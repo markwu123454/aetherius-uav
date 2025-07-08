@@ -1,3 +1,28 @@
+// Sparkline.tsx
+import { useEffect, useRef, useState } from "react";
+
+// ========== Hook ==========
+export function useSparkline(value: number, maxLength = 60, intervalMs = 1000) {
+  const [history, setHistory] = useState<number[]>([]);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHistory(prev => {
+        const updated = [...prev, valueRef.current];
+        return updated.length > maxLength ? updated.slice(-maxLength) : updated;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [maxLength, intervalMs]);
+
+  return history;
+}
+
+
+// ========== Component ==========
 interface SparklineProps {
   data: number[];
   width?: number;
@@ -19,7 +44,7 @@ export function Sparkline({
 }: SparklineProps) {
   if (data.length < 2) return null;
 
-  const margin = 2; // padding to prevent clipping
+  const margin = 2;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -42,7 +67,7 @@ export function Sparkline({
   }
 
   return (
-    <svg width={width} height={height} className="text-green-400">
+    <svg width={width} height={height} className="text-blue-600">
       <polyline
         fill="none"
         stroke={color}

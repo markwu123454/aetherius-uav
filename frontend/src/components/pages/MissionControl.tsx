@@ -2,11 +2,16 @@ import {useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {useRealTime} from "@/lib/RealTimeContext.tsx";
 import * as Cesium from "cesium";
-import {Sparkline} from "@/components/ui/Sparkline.tsx";
+import {Sparkline, useSparkline} from "@/components/ui/Sparkline";
 import {
     GLOBAL_POSITION_INT,
     ATTITUDE,
     RC_CHANNELS,
+    BATTERY_STATUS,
+    HEARTBEAT,
+    SYS_STATUS,
+    VFR_HUD,
+    GPS_RAW_INT
 } from "@/types";
 import {TopBar} from "@/components/MissionToppanel";
 import {BottomBar} from "@/components/MissionBottompanel"
@@ -52,7 +57,6 @@ export default function MissionControl() {
     const mapRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
 
-    const [altHistory, setAltHistory] = useState<number[]>([]);
     const [showLeaveModal, setShowLeaveModal] = useState(false);
     const [viewer, setViewer] = useState<Cesium.Viewer | null>(null);
     const [tilesetEnabled, setTilesetEnabled] = useState(false);
@@ -64,6 +68,15 @@ export default function MissionControl() {
     const gps = (state.telemetry["GLOBAL_POSITION_INT"] as GLOBAL_POSITION_INT | undefined) ?? zeroProxy<GLOBAL_POSITION_INT>();
     const att = (state.telemetry["ATTITUDE"] as ATTITUDE | undefined) ?? zeroProxy<ATTITUDE>();
     const rc = (state.telemetry["RC_CHANNELS"] as RC_CHANNELS | undefined) ?? zeroProxy<RC_CHANNELS>();
+    const bat = (state.telemetry["BATTERY_STATUS"] as BATTERY_STATUS | undefined) ?? zeroProxy<BATTERY_STATUS>();
+    const heartbeat = (state.telemetry["HEARTBEAT"] as HEARTBEAT | undefined) ?? zeroProxy<HEARTBEAT>();
+    const sys = (state.telemetry["SYS_STATUS"] as SYS_STATUS | undefined) ?? zeroProxy<SYS_STATUS>();
+    const vfr = (state.telemetry["VFR_HUD"] as VFR_HUD | undefined) ?? zeroProxy<VFR_HUD>();
+    const gpsRaw = (state.telemetry["GPS_RAW_INT"] as GPS_RAW_INT | undefined) ?? zeroProxy<GPS_RAW_INT>();
+
+    // Update altitude sparkline
+    const altHistory = useSparkline(gps.relative_alt, 240, 500);
+    const batteryHistory = useSparkline(bat.battery_remaining, 240, 2000);
 
     const tickWidth = 37.5;
     const degPerTick = 10;
@@ -102,17 +115,6 @@ export default function MissionControl() {
     const [prevYaw, setPrevYaw] = useState(yawDeg);
     const [smooth, setSmooth] = useState(true);
 
-    const attYawRef = useRef(att.yaw);
-    const gpsRAltRef = useRef(gps.relative_alt);
-
-    useEffect(() => {
-        attYawRef.current = att.yaw
-    }, [att.yaw]);
-
-    useEffect(() => {
-        gpsRAltRef.current = gps.relative_alt
-    }, [gps.relative_alt]);
-
     // Smooth wrap around for compass visualization
     useEffect(() => {
         const delta = Math.abs(yawDeg - prevYaw);
@@ -144,22 +146,9 @@ export default function MissionControl() {
         }
     }, []);
 
-    // Update altitude sparkline
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const yaw = gpsRAltRef.current
-            setAltHistory(prev => {
-                const updated = [...prev, yaw];
-                return updated.length > 240 ? updated.slice(-240) : updated;
-            });
-        }, 500);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    // Render cesium map
     useEffect(() => {
         if (!mapRef.current) return;
+
         const viewerInstance = new Cesium.Viewer(mapRef.current, {
             animation: false,
             timeline: false,
@@ -171,36 +160,58 @@ export default function MissionControl() {
             infoBox: false,
             fullscreenButton: false,
         });
+
         viewerInstance.scene.globe.depthTestAgainstTerrain = true;
         viewerInstance.scene.skyAtmosphere.show = true;
 
-        console.log("created")
-
         viewerInstance.scene.setTerrain(
-            new Cesium.Terrain(
-                Cesium.CesiumTerrainProvider.fromIonAssetId(1)
-            )
+            new Cesium.Terrain(Cesium.CesiumTerrainProvider.fromIonAssetId(1))
         );
 
-        // Add static model at specified lat/lon/alt
-        const position = Cesium.Cartesian3.fromDegrees(-117.8336087, 33.9829725, 225);
+        // Live position and orientation
+        const positionProp = new Cesium.SampledPositionProperty();
+        const orientationProp = new Cesium.VelocityOrientationProperty(positionProp); // optional, or set manually
+
         const entity = viewerInstance.entities.add({
-            position,
+            position: positionProp,
+            orientation: orientationProp, // or set manually below
             model: {
                 uri: '/src/assets/low_poly_airplane.glb',
                 scale: 0.02,
                 minimumPixelSize: 64,
             },
-            name: 'UAV'
+            name: 'UAV',
         });
 
         setTrackedEntity(entity);
         setViewer(viewerInstance);
 
-        return () => {
-            viewerInstance.destroy();
-        };
+        return () => viewerInstance.destroy();
     }, []);
+
+    useEffect(() => {
+        if (!viewer || !trackedEntity) return;
+
+        const time = Cesium.JulianDate.now();
+
+        const position = Cesium.Cartesian3.fromDegrees(
+            gps.lon / 1e7,
+            gps.lat / 1e7,
+            gps.alt / 1000
+        );
+
+        trackedEntity.position = new Cesium.ConstantPositionProperty(position);
+
+        const hpr = Cesium.HeadingPitchRoll.fromDegrees(
+            att.yaw * 57.3,
+            att.pitch * 57.3,
+            att.roll * 57.3
+        );
+
+        const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+        trackedEntity.orientation = new Cesium.ConstantProperty(orientation);
+    }, [gps, att]);
+
 
     // Toggle camera tracking plane
     function toggleTracking() {
@@ -232,7 +243,7 @@ export default function MissionControl() {
         setTilesetEnabled(true);
     }
 
-    function passing(): boolean {
+    function pass(): boolean {
         return true;
     }
 
@@ -252,10 +263,10 @@ export default function MissionControl() {
                         <div className="text-blue-500">ARM / MODE</div>
                         <div className="flex items-center gap-4">
                             {/* ARM/DISARM Buttons */}
-                            <HoldToConfirmButton onConfirm={passing} variant={"outline"}>
+                            <HoldToConfirmButton onConfirm={pass} variant={"outline"}>
                                 ARM
                             </HoldToConfirmButton>
-                            <HoldToConfirmButton onConfirm={passing} variant={"destructive"}>
+                            <HoldToConfirmButton onConfirm={pass} variant={"destructive"}>
                                 DISARM
                             </HoldToConfirmButton>
 
@@ -298,7 +309,7 @@ export default function MissionControl() {
                                 <Button variant="outline" className="px-2 py-1 text-sm">Upload</Button>
                                 <Button variant="outline" className="px-2 py-1 text-sm">Start</Button>
                                 <Button variant="outline" className="px-2 py-1 text-sm">Pause</Button>
-                                <HoldToConfirmButton onConfirm={passing} variant="destructive">
+                                <HoldToConfirmButton onConfirm={pass} variant="destructive">
                                     Abort
                                 </HoldToConfirmButton>
                             </div>
@@ -424,11 +435,101 @@ export default function MissionControl() {
 
                 {/* Right Panel */}
                 <div
-                    className="col-start-3 flex flex-col h-full min-h-0 border-l border-blue-800 bg-zinc-900 p-2 text-sm font-bold tracking-wide overflow-y-auto">
-                    <div className="mb-2">TELEMETRY + MISSION STATUS</div>
-                    <div className="mb-1">ALTITUDE (m)</div>
-                    <Sparkline data={altHistory} width={400} height={40} highlightMinMax={true}/>
+                    className="col-start-3 flex flex-col h-full min-h-0 border-l border-blue-800 bg-zinc-900 p-2 text-sm font-bold tracking-wide overflow-y-auto space-y-4">
+
+                    {/* Header */}
+                    <div className="text-blue-400 text-base">TELEMETRY</div>
+
+                    {/* Zone 1: Core Flight Stats */}
+                    <div className="space-y-1">
+                        <div className="text-blue-300">FLIGHT STATUS</div>
+                        <div className="grid grid-cols-2 gap-x-2 text-xs font-mono">
+                            <div>Altitude (m)</div>
+                            <div className="text-right">
+                                {gps.relative_alt !== 0 ? (gps.relative_alt / 1000).toFixed(1) : "--"} m
+                            </div>
+
+                            <div>Ground Speed (m/s)</div>
+                            <div className="text-right">
+                                {vfr.groundspeed !== 0 ? vfr.groundspeed.toFixed(1) : "--"} m/s
+                            </div>
+
+                            <div>Airspeed (m/s)</div>
+                            <div className="text-right">
+                                {vfr.airspeed !== 0 ? vfr.airspeed.toFixed(1) : "--"} m/s
+                            </div>
+
+                            <div>Heading (°)</div>
+                            <div className="text-right">
+                                {vfr.heading && vfr.heading !== 0 ? vfr.heading.toFixed(0) : "--"}°
+                            </div>
+
+                            <div>Climb Rate (m/s)</div>
+                            <div className="text-right">
+                                {vfr.climb && vfr.climb !== 0 ? vfr.climb.toFixed(1) : "--"} m/s
+                            </div>
+
+                            <div>Pitch / Roll / Yaw (°)</div>
+                            <div className="text-right">
+                                {(att.pitch !== 0 || att.roll !== 0 || att.yaw !== 0)
+                                    ? `${(att.pitch * 57.3).toFixed(1)}°/${(att.roll * 57.3).toFixed(1)}°/${(att.yaw * 57.3).toFixed(1)}°`
+                                    : "--°/--°/--°"}
+                            </div>
+
+                            <div>Battery</div>
+                            <div className="text-right">
+                                {(bat.voltages[0] ?? 0) > 0
+                                    ? `${(bat.voltages[0]! / 1000).toFixed(2)}V (${bat.battery_remaining ?? "--"}%)`
+                                    : "-- V (--%)"}
+                            </div>
+
+                            <div>RC Signal</div>
+                            <div className="text-right">-- dBm</div>
+                        </div>
+                    </div>
+
+
+                    {/* Zone 2: Graphs */}
+                    <div className="space-y-2">
+                        <div>
+                            <div className="text-blue-300 text-xs mb-1">ALTITUDE (m)</div>
+                            <Sparkline data={altHistory} width={400} height={40} highlightMinMax={true}/>
+                        </div>
+                        <div>
+                            <div className="text-blue-300 text-xs mb-1">BATTERY (%)</div>
+                            {/* Replace with actual battery history */}
+                            <Sparkline data={batteryHistory} width={400} height={40}/>
+                        </div>
+                        {/* Optional speed graph */}
+                        {/* <div>
+            <div className="text-blue-300 text-xs mb-1">SPEED (m/s)</div>
+            <Sparkline data={speedHistory} width={400} height={40} />
+        </div> */}
+                    </div>
+
+                    {/* Zone 3: System Status */}
+                    <div className="space-y-1">
+                        <div className="text-blue-300">SYSTEM STATUS</div>
+                        <div className="grid grid-cols-2 gap-x-2 text-xs font-mono">
+                            <div>Mode</div>
+                            <div className="text-right">--</div>
+                            <div>ARM Status</div>
+                            <div className="text-right">--</div>
+                            <div>Failsafe</div>
+                            <div className="text-right">--</div>
+                            <div>GPS Sats</div>
+                            <div className="text-right">--</div>
+                            <div>HDOP</div>
+                            <div className="text-right">--</div>
+                            <div>EKF Status</div>
+                            <div className="text-right">--</div>
+                            <div>Uptime</div>
+                            <div className="text-right">--</div>
+                        </div>
+                    </div>
+
                 </div>
+
 
                 {showLeaveModal && (
                     <NavigationConfirmModal

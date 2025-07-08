@@ -26,7 +26,8 @@ export function TopBar() {
     const gpsRaw = (state.telemetry["GPS_RAW_INT"] as GPS_RAW_INT | undefined) ?? zeroProxy<GPS_RAW_INT>();
 
     return (
-<div className="row-start-1 flex flex-row items-center border-b border-blue-800 bg-zinc-900 p-2 text-sm font-bold tracking-wide gap-4 text-blue-300 font-mono overflow-x-auto scrollbar-dark whitespace-nowrap">
+        <div
+            className="row-start-1 flex flex-row items-center border-b border-blue-800 bg-zinc-900 p-2 text-sm font-bold tracking-wide gap-4 text-blue-300 font-mono overflow-x-auto scrollbar-dark whitespace-nowrap">
 
             {/* ARM + MODE */}
             <div className="flex items-center gap-1">
@@ -44,8 +45,9 @@ export function TopBar() {
             {/* GPS */}
             <div className="flex items-center gap-1">
                 <span>GPS:</span>
-                <span
-                    className="inline-block w-[4ch] truncate">{gpsRaw.fix_type >= 3 ? "3D FIX" : gpsRaw.fix_type ? "NO FIX" : "—"}</span>
+                <span className="inline-block w-[5ch] truncate">
+                {gpsRaw.fix_type >= 3 ? "3D" : gpsRaw.fix_type === 2 ? "2D" : gpsRaw.fix_type === 1 ? "NFX" : "—"}
+                </span>
             </div>
             <div className="flex items-center gap-1">
                 <span>SATS:</span>
@@ -53,11 +55,11 @@ export function TopBar() {
             </div>
             <div className="flex items-center gap-1">
                 <span>LAT:</span>
-                <span className="inline-block w-[7ch] truncate">{gps.lat ? (gps.lat / 1e7).toFixed(6) : "—"}</span>
+                <span className="inline-block w-[12ch] truncate">{gps.lat ? (gps.lat / 1e7).toFixed(6) : "—"}</span>
             </div>
             <div className="flex items-center gap-1">
                 <span>LON:</span>
-                <span className="inline-block w-[7ch] truncate">{gps.lon ? (gps.lon / 1e7).toFixed(6) : "—"}</span>
+                <span className="inline-block w-[12ch] truncate">{gps.lon ? (gps.lon / 1e7).toFixed(6) : "—"}</span>
             </div>
             <div className="flex items-center gap-1">
                 <span>ALT:</span>
@@ -89,7 +91,7 @@ export function TopBar() {
                 <span className="inline-block w-[9ch] truncate">{vfr.groundspeed?.toFixed(1) ?? "—"} m/s</span>
             </div>
             <div className="flex items-center gap-1">
-                <span>CLIMB:</span>
+                <span>CLB:</span>
                 <span className="inline-block w-[9ch] truncate">{vfr.climb?.toFixed(1) ?? "—"} m/s</span>
             </div>
             <div className="flex items-center gap-1">

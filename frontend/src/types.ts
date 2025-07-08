@@ -319,6 +319,46 @@ export interface UNKNOWN_295 {
     data: number[];
 }
 
+export interface AHRS2 {
+    roll: number;
+    pitch: number;
+    yaw: number;
+    altitude: number;
+    lat: number;
+    lng: number;
+}
+
+export interface LOCAL_POSITION_NED{
+    time_boot_ms: number;
+    x: number;
+    y: number;
+    z: number;
+    vx: number;
+    vy: number;
+    vz: number;
+}
+
+export interface GPS_GLOBAL_ORIGIN {
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    time_usec: number;
+}
+
+export interface HOME_POSITION {
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    x: number;
+    y: number;
+    z: number;
+    q: number[];
+    approach_x: number;
+    approach_y: number;
+    approach_z: number;
+    time_usec: number;
+}
+
 export interface Telemetry {
     HEARTBEAT?: HEARTBEAT;
     AHRS?: AHRS;
@@ -348,6 +388,10 @@ export interface Telemetry {
     AOA_SSA?: AOA_SSA;
     MCU_STATUS?: MCU_STATUS;
     UNKNOWN_295?: UNKNOWN_295;
+    AHRS2?: AHRS2;
+    LOCAL_POSITION_NED?: LOCAL_POSITION_NED;
+    GPS_GLOBAL_ORIGIN?: GPS_GLOBAL_ORIGIN;
+    HOME_POSITION?: HOME_POSITION;
     logs: LogEntry[];
 }
 

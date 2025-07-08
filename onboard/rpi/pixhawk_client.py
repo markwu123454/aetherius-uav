@@ -323,7 +323,8 @@ class PixHawkClient:
                  "MISSION_CURRENT" | "SERVO_OUTPUT_RAW" | "RC_CHANNELS" | "RAW_IMU" | "SCALED_IMU2" | "SCALED_IMU3" | \
                  "SCALED_PRESSURE" | "SCALED_PRESSURE2" | "GPS_RAW_INT" | "SYSTEM_TIME" | "WIND" | "TERRAIN_REPORT" | \
                  "EKF_STATUS_REPORT" | "VIBRATION" | "BATTERY_STATUS" | "AOA_SSA" | "MCU_STATUS" | "UNKNOWN_295" | \
-                 "POSITION_TARGET_GLOBAL_INT" | "NAV_CONTROLLER_OUTPUT" | "EXTENDED_SYS_STATE":
+                 "POSITION_TARGET_GLOBAL_INT" | "NAV_CONTROLLER_OUTPUT" | "EXTENDED_SYS_STATE" | "LOCAL_POSITION_NED" | \
+                 "AHRS2" | "GPS_GLOBAL_ORIGIN" | "HOME_POSITION":
                 #print(mtype, flush=True)
                 await self.send_msg({"type": "telemetry", "msg": fields})
                 async with asyncio.Lock():
