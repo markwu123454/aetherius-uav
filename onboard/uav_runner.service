@@ -1,0 +1,14 @@
+[Unit]
+Description=UAV Auto-Update and Execution Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u /home/user/uav/uav_runner.py
+WorkingDirectory=/home/user/uav
+Restart=always
+RestartSec=10
+User=user
+
+[Install]
+WantedBy=multi-user.target

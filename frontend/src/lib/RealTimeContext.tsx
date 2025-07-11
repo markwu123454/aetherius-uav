@@ -10,6 +10,7 @@ export interface ErrorEntry {
 
 interface RealTimeState {
     telemetry: Partial<Telemetry>;
+    telemetryTimestamps: Partial<Record<keyof Telemetry, number>>;
     buffer: Partial<Telemetry>[];
     liveLogs: LogEntry[];
     allLogs: LogEntry[];
@@ -18,6 +19,7 @@ interface RealTimeState {
 
 const initialRT: RealTimeState = {
     telemetry: {},
+    telemetryTimestamps: {},
     buffer: [],
     liveLogs: [],
     allLogs: [],
@@ -34,7 +36,17 @@ type RealTimeAction =
 function rtReducer(state: RealTimeState, action: RealTimeAction): RealTimeState {
     switch (action.type) {
         case "telemetry":
-            return {...state, telemetry: {...state.telemetry, ...action.payload}};
+            const now = Date.now();
+            const updatedTimestamps = {...state.telemetryTimestamps};
+            for (const key of Object.keys(action.payload) as (keyof Telemetry)[]) {
+                updatedTimestamps[key] = now;
+            }
+
+            return {
+                ...state,
+                telemetry: {...state.telemetry, ...action.payload},
+                telemetryTimestamps: updatedTimestamps,
+            };
         case "buffer":
             return {...state, buffer: action.payload};
         case "log":
@@ -111,6 +123,28 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
     const pausedRef = useRef(false);
     const pendingBuffer = useRef<{ type: string, data: any }[]>([]);
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const timeoutMs = 10_000;
+
+            const staleKeys = Object.entries(state.telemetryTimestamps)
+                .filter(([_, t]) => now - (t ?? 0) > timeoutMs)
+                .map(([k]) => k as keyof Telemetry);
+
+            if (staleKeys.length > 0) {
+                const cleared: Partial<Telemetry> = {};
+                for (const key of staleKeys) cleared[key] = undefined;
+                console.log("cleared", cleared);
+
+                dispatch({type: "telemetry", payload: cleared});
+            }
+        }, 1000); // Check every second
+
+        return () => clearInterval(interval);
+    }, [state.telemetryTimestamps]);
+
+
     const flushBuffer = () => {
         for (const msg of pendingBuffer.current) {
             console.log("message")
@@ -152,6 +186,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
             .catch(err => console.error("Failed to load historical logs", err));
     }, []);
 
+
     const sendCommand = (msg: any) => {
         const ws = wsRef.current;
         console.log("sendCommand", msg);
@@ -163,6 +198,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
         }
     };
 
+
     const sendRawCommand = (msg: any) => {
         const ws = wsRef.current;
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -173,15 +209,15 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
         }
     };
 
+
     useEffect(() => {
         let retry: number;
 
         function connect() {
-            const ws = new WebSocket(`ws://${window.location.hostname}:55050/ws/telemetry`);
+            const ws = new WebSocket(`wss://${window.location.hostname}:55050/ws/telemetry`);
             wsRef.current = ws;
 
             ws.onopen = () => {
-                console.warn("WebSocket opened");
                 setPaused(false);
                 flushBuffer(); // <--- flush only after confirmed open
             };
@@ -244,6 +280,7 @@ export function RealTimeProvider({children}: { children: ReactNode }) {
             clearTimeout(retry);
         };
     }, []);
+
 
     return (
         <RealTimeContext.Provider

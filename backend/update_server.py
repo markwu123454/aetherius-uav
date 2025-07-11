@@ -4,24 +4,23 @@ import json
 import logging
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+
 
 class UAVServer:
-    def __init__(self, port=55051, base_dir="onboard/rpi", log_file="uav_server.log"):
+    def __init__(self, port=55051, base_dir="onboard/rpi"):
         self.port = port
         self.base_dir = os.path.abspath(base_dir)
 
-        # set up a dedicated logger
+        # set up a dedicated logger (console only)
         self.logger = logging.getLogger(f"UpdateServer:{port}")
         self.logger.setLevel(logging.INFO)
         formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
-        fh = logging.FileHandler(log_file)
-        fh.setFormatter(formatter)
         sh = logging.StreamHandler()
         sh.setFormatter(formatter)
 
         if not self.logger.handlers:
-            self.logger.addHandler(fh)
             self.logger.addHandler(sh)
 
         self.handler_class = self._make_handler()
@@ -131,7 +130,6 @@ def start_update_server():
     base_dir = os.path.join(project_dir, "onboard", "rpi")
 
     server = UAVServer(port=55051, base_dir=base_dir)
-    from threading import Thread
     thread = Thread(target=server.start, daemon=True)
     thread.start()
 

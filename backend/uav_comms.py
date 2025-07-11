@@ -7,7 +7,7 @@ from pathlib import Path
 import websockets
 
 
-class UAVConnection:
+class UavComms:
     def __init__(self, host: str = "0.0.0.0", port: int = 55052):
         self.host = host
         self.port = port
@@ -37,21 +37,11 @@ class UAVConnection:
 
         await wait_for_connection()
 
-    async def delayed_send(self):
-        await asyncio.sleep(7)
-        # await self.send({"type": "rate_request", "msg": {"category": 'ATTITUDE', "field": 'roll', "rate": 2}})
-        # await self.send({"type": "command", "msg": {"command": "MAV_CMD_COMPONENT_ARM_DISARM", "params": [1]}})
-        #await self.send({"type": "command", "msg": {"command": "MAV_CMD_PREFLIGHT_STORAGE", "params": [0,1]}})
-        #await self.send({"type": "command", "msg": {"command": "MAV_CMD_DO_MOTOR_TEST", "params": [1, 0, 10.0, 2.0, 1, 0, 0]}})
-
     async def _accept_once(self, websocket):
         """Accept a client, then block on messages until it disconnects."""
         self.websocket = websocket
         client = websocket.remote_address
         self._log_task("NW0101", {"ip": str(client[0])})
-
-        # Schedule the send task to run in 5 seconds, but don't wait for it here
-        asyncio.create_task(self.delayed_send())
 
         raw = None
 
@@ -83,12 +73,9 @@ class UAVConnection:
                 case _:
                     assert "msg" in msg
                     msg_body = msg["msg"]
-
         except Exception as e:
             self._log_task("NW2100", {"location": "handling message", "e": repr(e), "message": type(msg)})
             return
-
-
 
         match msg["type"]:
             case "ping":
@@ -115,7 +102,6 @@ class UAVConnection:
                         "type": "telemetry",
                         "data": {pkt_type: pkt}
                     })
-
 
             case "changelog_batch":
                 pass
@@ -221,7 +207,7 @@ def run_server():
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    server = UAVConnection()
+    server = UavComms()
     try:
         asyncio.run(server.mainloop())
     except KeyboardInterrupt:

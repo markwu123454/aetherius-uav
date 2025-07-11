@@ -4,7 +4,23 @@ export default function Manual() {
   const navigate = useNavigate();
 
   const handleStartMission = () => {
-    navigate("/mission-control");
+    // Try fullscreen first
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen denied:", err);
+      });
+    }
+
+    // Then try geolocation
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        navigate("/mission-control");
+      },
+      (err) => {
+        console.warn("Geolocation denied:", err);
+      }
+    );
   };
 
   return (

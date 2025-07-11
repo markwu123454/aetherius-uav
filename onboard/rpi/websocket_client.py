@@ -5,7 +5,7 @@ import traceback
 
 import websockets
 import time
-from typing import Dict, Deque, Optional, Any, Callable
+from typing import Dict, Deque, Optional, Any
 from collections import defaultdict, deque
 
 

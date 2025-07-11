@@ -52,7 +52,7 @@ export default function HoldToConfirmButton({
         <div className="relative">
             <Button
                 variant={variant}
-                className='relative overflow-hidden w-full ${variant === "destructive" ? " bg-zinc-900 hover:bg-red-950 hover:border-red-500" : ""}'
+                className={`relative overflow-hidden w-full ${variant === "destructive" ? "bg-zinc-900 hover:bg-red-950 hover:border-red-500" : ""}`}
                 onMouseDown={handleMouseDown}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}

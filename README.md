@@ -12,12 +12,19 @@ Aetherius GCS is a modular ground control station for fixed-wing UAVs, designed 
 
 ## Architecture
 
-- **Frontend**: React + TypeScript + Tailwind CSS  
-  - Cesium for map rendering  
-  - React Context for telemetry and API state  
-- **Backend**: FastAPI (Python 3.11+), Websocket, HTTPServer 
-  - Serves log endpoints, mission persistence, and telemetry websocket  
-  - Interfaces with MAVLink stream via pyMAVLink  
+- **Frontend** (React + TypeScript + Tailwind)
+  - Cesium: 3D map visualization
+  - Recharts: Graphing telemetry
+  - shadcn/ui & tailwind: Interface components
+  - React Context: App-wide telemetry and config state
+- **Backend** (FastAPI + WebSockets + pyMAVLink)
+  - Serves telemetry via WebSocket
+  - REST API for logs, missions, settings
+  - Websocket connection to Pi
+- **Onboard (Raspberry Pi)**
+  - Handles MAVLink comms to Pixhawk
+  - Auto-updating over LAN via HTTP
+  
 
 ## Folder Structure (WIP)
 
@@ -34,7 +41,24 @@ aetherius-uav/
 │   ├── main.py
 ├── onboard/              # Raspberry Pi side program
 │   ├── rpi/
+├── Assets/    
 ```
+
+## Page Layout
+- **Dashboard**: Basic overview, Leaflet map
+- **Telemetry Dashboard**: Real-time plots using rechart (battery, attitude, GPS)
+- **Mission Planning**: Map, waypoint editor, geofence, path preview
+- **Manual Control**: Joystick visualization, RC override, attitude indicator
+  - **Mission Monitor**: Telemetry, mission control, logs, errors, full cesium map
+  - **Accessory Monitor**: Lidar, camera, payload data
+- **Logs**: Filtered log viewer with search and grouping
+- **Settings**: Ground station config, firmware versions, preferences
+
+## App Flowchart
+
+![Data Flow](Assets/data_flow.png)
+
+![Control Flow](Assets/Execution_flow.png)
 
 ## Running the Project
 
@@ -49,7 +73,7 @@ aetherius-uav/
 **Frontend:**
 
 ```bash
-cd frontend-old
+cd frontend
 npm install
 npm run dev
 ```
@@ -79,8 +103,11 @@ python3 run_gcs.py
 - [x] UI - Driver Station
 - [ ] UI - Dashboard
 - [ ] UI - Telemetry
-- [ ] UI - Mission planning
+- [x] UI - Mission planning
+- [ ] UI - Manual control
 - [ ] UI - Mission control
+- [ ] UI - Mission monitor
+- [ ] UI - Accessory monitor
 - [x] UI - Logs
 - [ ] UI - Settings
 - [ ] Lidar
@@ -90,16 +117,22 @@ python3 run_gcs.py
 - [ ] Lidar 3d map
 
 
-Big problems i've had to solve so far:
-- Tailwind not loading
+Big problems I've encountered so far:
+- Tailwind & vite not installing and working
 - Page not loading
-- Pi not connecting to wifi
-- Pi not ssh-ing
+- Pi not connecting to Wi-Fi
+- Pi not connecting to ssh
 - Rechart not working
 - Cesium not working
+- Leaflet interactions not working
+- Cesium doesn't stop reloading
 - Pixhawk not calibrating
-- Pi crashing after a while
+- Pi crashing
 - Websocket not reconnecting
-- Mavlink dying
-- Mavlink freezing
-- Tailwind not working
+- Mavlink disconnecting
+- Mavlink message loop freezing
+- Tailwind not loading formats properly
+- shadcn/ui not downloading
+- https and wss not working
+- Pi not booting up
+- Ailerons not moving

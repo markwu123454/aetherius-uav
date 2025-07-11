@@ -1,50 +1,68 @@
-import { cn } from "@/lib/utils";
-import React from "react";
+import * as React from "react"
+import {Slot} from "@radix-ui/react-slot"
+import {cva, type VariantProps} from "class-variance-authority"
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "outline" | "destructive" | "ghost";
-}
+import {cn} from "@/lib/utils"
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", ...props }, ref) => {
-    const base = `
-      inline-flex items-center justify-center text-sm font-medium rounded-md px-2 py-2 h-8
-      transition-all duration-100 ease-out
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30
-      disabled:opacity-50 disabled:pointer-events-none
-      border noselect
-    `;
+const buttonVariants = cva(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium " +
+    "transition-colors transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 " +
+    "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+    "focus-visible:ring-offset-background aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 " +
+    "aria-invalid:border-destructive active:scale-[0.95] hover:scale-[1.05]",
+    {
+        variants: {
+            variant: {
+                default:
+                    "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
+                destructive:
+                    "border-2 border-red-600 bg-destructive text-white shadow-xs hover:bg-destructive/90 " +
+                    "active:bg-destructive/80 focus-visible:ring-destructive/40 dark:bg-destructive/60",
+                outline:
+                    "border-2 border-zinc-600 bg-background shadow-xs hover:bg-accent hover:text-accent-foreground " +
+                    "active:bg-accent/80 dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+                secondary:
+                    "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 active:bg-secondary/70",
+                ghost:
+                    "hover:bg-accent hover:text-accent-foreground active:bg-accent/60 dark:hover:bg-accent/50",
+                link:
+                    "text-primary underline-offset-4 hover:underline active:opacity-80",
+            },
+            size: {
+                default: "h-9 px-4 py-2 has-[>svg]:px-3",
+                sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+                lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+                icon: "size-9",
+            },
+        },
+        defaultVariants: {
+            variant: "default",
+            size: "default",
+        },
+    }
+)
 
-    const variants = {
-      default: `
-        bg-blue-600 text-white border-blue-700
-        hover:bg-blue-700 hover:border-blue-800
-        active:scale-[0.95] active:shadow-inner active:border-blue-900
-      `,
-      outline: `
-        bg-transparent text-white border-white/30
-        hover:bg-white/10 hover:border-white/50
-        active:bg-white/20 active:scale-[0.95] active:shadow-inner
-      `,
-      destructive: `
-        bg-red-600 text-white border-red-700
-        hover:bg-red-700 hover:border-red-800
-        active:scale-[0.95] active:shadow-inner active:border-red-900
-      `,
-      ghost: `
-        bg-transparent text-white border-white/20
-        hover:bg-white/10 hover:border-white/40
-        active:bg-white/20 active:scale-[0.95] active:shadow-inner
-      `,
-    };
+
+function Button({
+                    className,
+                    variant,
+                    size,
+                    asChild = false,
+                    ...props
+                }: React.ComponentProps<"button"> &
+    VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+}) {
+    const Comp = asChild ? Slot : "button"
 
     return (
-      <button
-        ref={ref}
-        className={cn(base, variants[variant], className)}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = "Button";
+        <Comp
+            data-slot="button"
+            className={cn(buttonVariants({variant, size, className}))}
+            {...props}
+        />
+    )
+}
+
+export {Button, buttonVariants}

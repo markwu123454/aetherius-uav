@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
 import {useRealTime} from "@/lib/RealTimeContext";
-import {formatLogEntry, logEntryClasses} from "@/lib/LogUtils";
+import {formatLogEntry, logEntryClasses, getError} from "@/lib/LogUtils";
 
 export function BottomBar() {
     const {state} = useRealTime();

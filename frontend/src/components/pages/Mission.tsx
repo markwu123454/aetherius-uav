@@ -13,6 +13,7 @@ import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
 import {useApi} from "@/lib/ApiContext";
 import type {Mission, Waypoint} from "@/types";
+import {restrictToVerticalAxis} from "@dnd-kit/modifiers";
 
 const secondaryNames = [
     "Ampère", "Babbage", "Chandrasekhar", "Dirac", "Euler", "Faraday", "Gödel",
@@ -317,15 +318,19 @@ export function MissionPlanner() {
                     <div className="w-[20%] h-full flex flex-col gap-4">
 
                         {/* Waypoints */}
-                        <Card className="bg-zinc-900 h-[33%] flex flex-col p-0">
-                            <div className="p-4">
-                                <CardHeader className="p-0">
+                        <Card className="bg-zinc-900 h-[33%] flex flex-col">
+                            <div>
+                                <CardHeader>
                                     <CardTitle>Waypoints</CardTitle>
                                 </CardHeader>
                             </div>
-                            <CardContent className="overflow-auto scrollbar-dark flex-1 px-4 pb-4">
+                            <CardContent className="overflow-y-auto overflow-x-hidden scrollbar-dark flex-1">
                                 <DndContext
                                     collisionDetection={closestCenter}
+                                    modifiers={[restrictToVerticalAxis]}
+                                    autoScroll={{
+                                        acceleration: 1, // default is 10
+                                    }}
                                     onDragEnd={({active, over}) => {
                                         if (over && active.id !== over.id) {
                                             const oldIndex = waypoints.findIndex(w => w.id === active.id);
@@ -334,6 +339,7 @@ export function MissionPlanner() {
                                         }
                                     }}
                                 >
+
                                     <SortableContext items={waypoints.map(w => w.id)}
                                                      strategy={verticalListSortingStrategy}>
                                         <ul className="space-y-1">
@@ -353,7 +359,7 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Edit Waypoint */}
-                        <Card className="bg-zinc-900 h-[67%] flex flex-col p-0">
+                        <Card className="bg-zinc-900 h-[66%] flex flex-col p-0">
                             <div className="p-4">
                                 <CardHeader className="p-0">
                                     <CardTitle>Edit Waypoint</CardTitle>
@@ -508,7 +514,6 @@ export function MissionPlanner() {
                                 <Marker
                                     key={wp.id}
                                     position={[wp.lat, wp.lon]}
-                                    draggable
                                     eventHandlers={{
                                         dragstart: () => {
                                             ignoreClick.current = true;
@@ -520,7 +525,6 @@ export function MissionPlanner() {
                                                 ignoreClick.current = false;
                                             }, 0);
                                         }
-
                                     }}
                                     icon={makeWpIcon(wp, i)}
                                 />
@@ -550,7 +554,7 @@ export function MissionPlanner() {
                     <div className="w-[20%] min-w-[200px] space-y-4 overflow-y-auto scrollbar-dark">
 
                         {/* Mission Overview */}
-                        <Card className='bg-zinc-900 p-4 space-y-4'>
+                        <Card className='bg-zinc-900'>
                             <CardHeader>
                                 <CardTitle>Mission Overview</CardTitle>
                             </CardHeader>
@@ -575,7 +579,7 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Flight Parameters */}
-                        <Card className='bg-zinc-900 p-4 space-y-4'>
+                        <Card className='bg-zinc-900'>
                             <CardHeader>
                                 <CardTitle>Flight Parameters</CardTitle>
                             </CardHeader>
@@ -596,7 +600,7 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Mission Settings */}
-                        <Card className='bg-zinc-900 p-4 space-y-4'>
+                        <Card className='bg-zinc-900'>
                             <CardHeader>
                                 <CardTitle>Mission Settings</CardTitle>
                             </CardHeader>
@@ -618,7 +622,7 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Mission Logic Files */}
-                        <Card className="bg-zinc-900 p-4 space-y-4">
+                        <Card className="bg-zinc-900">
                             <CardHeader>
                                 <CardTitle>Mission Logic Files</CardTitle>
                             </CardHeader>
@@ -672,7 +676,7 @@ export function MissionPlanner() {
                         </Card>
 
                         {/* Mission Actions */}
-                        <Card className='bg-zinc-900 p-4 space-y-4'>
+                        <Card className='bg-zinc-900'>
                             <CardHeader>
                                 <CardTitle>Mission Actions</CardTitle>
                             </CardHeader>

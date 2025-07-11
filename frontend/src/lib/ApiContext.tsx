@@ -31,7 +31,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
         const params = new URLSearchParams();
         if (start != null) params.set("start", String(start));
         if (end != null) params.set("end", String(end));
-        const res = await fetch(`http://${window.location.hostname}:55050/api/telemetry/historical?${params}`);
+        const res = await fetch(`https://${window.location.hostname}:55050/api/telemetry/historical?${params}`);
         return res.json();
     }, []);
 
@@ -39,7 +39,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
         const params = new URLSearchParams();
         params.set("start", String(start ?? 0));
         if (end != null) params.set("end", String(end));
-        const res = await fetch(`http://${window.location.hostname}:55050/api/log/historical?${params}`);
+        const res = await fetch(`https://${window.location.hostname}:55050/api/log/historical?${params}`);
         if (!res.ok) {
             throw new Error(`Failed to fetch logs: ${res.status} ${res.statusText}`);
         }
@@ -47,7 +47,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
     }, []);
 
     const sendMission = useCallback(async (mission: Mission) => {
-        await fetch(`http://${window.location.hostname}:55050/api/mission/process`, {
+        await fetch(`https://${window.location.hostname}:55050/api/mission/process`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(mission),
@@ -56,12 +56,12 @@ export function ApiProvider({children}: { children: ReactNode }) {
     }, []);
 
     const fetchProcessedMission = useCallback(async () => {
-        const res = await fetch(`http://${window.location.hostname}:55050/api/mission/process`);
+        const res = await fetch(`https://${window.location.hostname}:55050/api/mission/process`);
         return res.ok ? res.json() : null;
     }, []);
 
     const fetchAutosaveMission = useCallback(async () => {
-        const res = await fetch(`http://${window.location.hostname}:55050/api/mission/autosave`);
+        const res = await fetch(`https://${window.location.hostname}:55050/api/mission/autosave`);
         console.log("fetch")
         if (res.status === 404) return null;
         return res.json();
@@ -69,7 +69,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
 
     const sendCommandLong = useCallback(async (command: number | string, params: (number | string)[]) => {
         try {
-            const res = await fetch(`http://${window.location.hostname}:55050/api/command/command_long`, {
+            const res = await fetch(`https://${window.location.hostname}:55050/api/command/command_long`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({command, params}),
@@ -81,7 +81,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
     }, []);
 
     const updateSetting = useCallback(async (setting: string, value: SettingValue) => {
-        const res = await fetch(`http://${window.location.hostname}:55050/api/setting/update`, {
+        const res = await fetch(`https://${window.location.hostname}:55050/api/setting/update`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({setting, value}),
@@ -93,7 +93,7 @@ export function ApiProvider({children}: { children: ReactNode }) {
     }, []);
 
     const fetchFullSettings = useCallback(async (): Promise<SettingsMap> => {
-        const res = await fetch(`http://${window.location.hostname}:55050/api/setting/full`);
+        const res = await fetch(`https://${window.location.hostname}:55050/api/setting/full`);
         if (!res.ok) {
             throw new Error(`Failed to fetch settings: ${res.status} ${res.statusText}`);
         }

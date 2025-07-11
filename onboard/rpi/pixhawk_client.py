@@ -4,7 +4,7 @@ import time
 import datetime
 import os
 from pathlib import Path
-from typing import Callable, Dict, Any, Sequence, Optional, Deque, Union, Literal, Coroutine, get_args
+from typing import Callable, Dict, Any, Sequence, Optional, Deque, Union, Literal, Coroutine, Awaitable
 from collections import defaultdict, deque
 import serial.tools.list_ports
 from pymavlink import mavutil
@@ -17,7 +17,7 @@ streams = Literal["MAV_DATA_STREAM_RAW_SENSORS", "MAV_DATA_STREAM_EXTENDED_STATU
 
 class PixHawkClient:
     send_log: Optional[Callable[..., Coroutine[Any, Any, None]]] = None
-    send_msg: Optional[Callable[[Dict[str, Any]], asyncio.Future]] = None
+    send_msg: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None
 
     def __init__(self, device: str, baud: int) -> None:
         self.device = device

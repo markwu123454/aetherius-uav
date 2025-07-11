@@ -7,8 +7,6 @@ import sys
 from pixhawk_client import PixHawkClient
 from websocket_client import WebSocketClient
 
-# Simple UAV main loop: only needs server IP
-
 def parse_args() -> str:
     parser = argparse.ArgumentParser(description="UAV main loop")
     parser.add_argument(
