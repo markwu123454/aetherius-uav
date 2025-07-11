@@ -1,0 +1,36 @@
+import {createRoot} from 'react-dom/client';
+import {createBrowserRouter, Navigate, RouterProvider} from "react-router-dom";
+import './styles.css';
+import {App} from './App';
+import 'leaflet/dist/leaflet.css';
+
+import {Dashboard} from "@/components/pages/Dashboard.tsx";
+import Telemetry from "@/components/pages/Telemetry";
+import {MissionPlanner as Mission} from "@/components/pages/Mission";
+import Manual from "@/components/pages/Manual";
+import Logs from "@/components/pages/Logs";
+import Settings from "@/components/pages/Settings";
+import MissionControl from "@/components/pages/MissionControl";
+
+const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <App/>,
+        children: [
+            {index: true, element: <Navigate to="/home" replace/>}, // redirect `/` to `/home`
+            {path: "home", element: <Dashboard/>},
+            {path: "telemetry", element: <Telemetry/>},
+            {path: "mission", element: <Mission/>},
+            {path: "manual", element: <Manual/>},
+            {path: "logs", element: <Logs/>},
+            {path: "settings", element: <Settings/>},
+            {path: "mission-control", element: <MissionControl/>}
+        ],
+    },
+]);
+
+createRoot(document.getElementById('root')!).render(
+    <>
+        <RouterProvider router={router}/>
+    </>
+);
