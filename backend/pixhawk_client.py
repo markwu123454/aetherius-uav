@@ -4,7 +4,7 @@ import time
 import datetime
 import os
 from pathlib import Path
-from typing import Callable, Dict, Any, Sequence, Optional, Deque, Union, Literal, Coroutine, Awaitable
+from typing import Callable, Dict, Any, Sequence, Optional, Deque, Union, Literal, Coroutine
 from collections import defaultdict, deque
 import serial.tools.list_ports
 from pymavlink import mavutil
@@ -43,6 +43,8 @@ class PixHawkClient:
                                         "params": None}
         self.temps: dict[str, Any] = {"params": {"buffer": {}, "expected": None, "received_indexes": set(), "last_received": time.time()}}
 
+        self._telemetry_lock = asyncio.Lock()
+
         self._hb_event = asyncio.Event()
         self._last_hb_time = time.time()
         self._stop = asyncio.Event()
@@ -60,6 +62,7 @@ class PixHawkClient:
 
             self._tasks.append(asyncio.create_task(self._event_loop()))
 
+            await self._hb_event.wait()
             asyncio.create_task(self.fetch_param())
 
             asyncio.create_task(self._temp_sequence())
@@ -114,6 +117,9 @@ class PixHawkClient:
         # create future
         fut = asyncio.get_event_loop().create_future()
         self.futures["command_ack"][cmd_int] = fut
+
+        if cmd_int in self.futures["command_ack"]:
+            raise RuntimeError("Command already in flight")
 
         # send command
         self.master.mav.command_long_send(
@@ -188,7 +194,7 @@ class PixHawkClient:
             self.temps.pop("params", None)
 
             self._log("PX0003", {"number": len(self.params)})
-            asyncio.create_task(self.send_msg({"type": "params", "msg": self.params}))
+            asyncio.create_task(self.send_msg({"type": "params", "data": self.params}))
 
     async def _temp_sequence(self) -> None:
         await asyncio.sleep(3)
@@ -330,8 +336,8 @@ class PixHawkClient:
                  "POSITION_TARGET_GLOBAL_INT" | "NAV_CONTROLLER_OUTPUT" | "EXTENDED_SYS_STATE" | "LOCAL_POSITION_NED" | \
                  "AHRS2" | "GPS_GLOBAL_ORIGIN" | "HOME_POSITION":
                 #print(mtype, flush=True)
-                await self.send_msg({"type": "telemetry", "msg": fields})
-                async with asyncio.Lock():
+                await self.send_msg({"type": "telemetry", "data": fields})
+                async with self._telemetry_lock:
                     prev = self.telemetry[mtype]
                     for k, v in fields.items():
                         if prev.get(k) != v and not k in {"mavpackettype", "time_boot_ms", "time_usec"}:
@@ -373,7 +379,7 @@ class PixHawkClient:
         asyncio.create_task(self.send_log(log_id=log_id, variables=variables))
 
 
-# <editor-fold desc="utils">
+# <editor-fold desc="unit test">
 
 async def _send_log_temp(
         timestamp: Optional[int] = None,

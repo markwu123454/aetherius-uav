@@ -177,77 +177,90 @@ export default function MissionControl() {
             position: positionProp,
             orientation: orientationProp,
             model: {
-                uri: '/src/assets/low_poly_airplane.glb',
+                uri: "/src/assets/low_poly_airplane.glb",
                 scale: 0.02,
-                minimumPixelSize: 64,
+                minimumPixelSize: 128,
             },
-            name: 'UAV',
+            name: "UAV",
         });
 
-        const endpoints = [
+        const colorMap = {
+            CLASS_B: Cesium.Color.RED.withAlpha(0.25),
+            CLASS_C: Cesium.Color.ORANGE.withAlpha(0.25),
+            CLASS_D: Cesium.Color.YELLOW.withAlpha(0.2),
+        };
+
+        const airspaceSource = new Cesium.CustomDataSource("Airspace");
+
+        fetch(
             "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query" +
-            "?where=" + encodeURIComponent("(LOCAL_TYPE = 'CLASS_C') AND (LOWER_CODE = 'SFC')") +
-            "&f=json" +
-            "&geometryType=esriGeometryEnvelope" +
-            "&inSR=102100" +
-            "&spatialRel=esriSpatialRelIntersects" +
-            "&geometryPrecision=3" +
-            "&returnGeometry=true",
+            "?where=" + encodeURIComponent("(LOCAL_TYPE IN ('CLASS_B','CLASS_C','CLASS_D')) AND (LOWER_CODE = 'SFC')") +
+            "&f=geojson" +
+            "&returnGeometry=true" +
+            "&geometryPrecision=3"
+        )
+            .then(res => res.json())
+            .then(async geojson => {
+                if (!geojson.features?.length) {
+                    console.warn("No airspace features returned");
+                    return;
+                }
 
-            "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query" +
-            "?where=" + encodeURIComponent("(LOCAL_TYPE = 'CLASS_B') AND (LOWER_CODE = 'SFC')") +
-            "&f=json" +
-            "&geometryType=esriGeometryEnvelope" +
-            "&inSR=102100" +
-            "&spatialRel=esriSpatialRelIntersects" +
-            "&geometryPrecision=3" +
-            "&returnGeometry=true",
+                console.log("Sample properties:", geojson.features[0].properties);
 
-            "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query" +
-            "?where=" + encodeURIComponent("(LOCAL_TYPE = 'CLASS_D') AND (LOWER_CODE = 'SFC')") +
-            "&f=json" +
-            "&geometryType=esriGeometryEnvelope" +
-            "&inSR=102100" +
-            "&spatialRel=esriSpatialRelIntersects" +
-            "&geometryPrecision=3" +
-            "&returnGeometry=true",
-            // Add more URLs as needed
-        ];
+                const ds = await Cesium.GeoJsonDataSource.load(geojson, {
+                    clampToGround: false,
+                    stroke: Cesium.Color.WHITE.withAlpha(0.4),
+                    fill: Cesium.Color.GRAY.withAlpha(0.05),
+                    strokeWidth: 1,
+                });
 
-        endpoints.forEach(url => {
-            fetch(url)
-                .then(res => res.json())
-                .then(data => {
-                    const features = Array.isArray(data.features)
-                        ? data.features.map(f => arcgisToGeoJSON(f))
-                        : [];
+                ds.entities.values.forEach(e => {
+                    const name = e.properties?.NAME?.getValue?.() ?? "UNKNOWN";
+                    const upperName = name.toUpperCase();
 
-                    if (!features.length) return;
+                    // Infer class from the name text
+                    let classType: "CLASS_B" | "CLASS_C" | "CLASS_D" | "OTHER" = "OTHER";
+                    if (upperName.includes("CLASS B")) classType = "CLASS_B";
+                    else if (upperName.includes("CLASS C")) classType = "CLASS_C";
+                    else if (upperName.includes("CLASS D")) classType = "CLASS_D";
 
-                    const geojson = {
-                        type: "FeatureCollection",
-                        features,
+                    const colorMap = {
+                        CLASS_B: Cesium.Color.RED.withAlpha(0.15),
+                        CLASS_C: Cesium.Color.ORANGE.withAlpha(0.15),
+                        CLASS_D: Cesium.Color.YELLOW.withAlpha(0.15),
+                        OTHER: Cesium.Color.CYAN.withAlpha(0.2),
                     };
 
-                    return Cesium.GeoJsonDataSource.load(geojson, {
-                        clampToGround: false,
-                        stroke: Cesium.Color.BLUE,
-                        fill: Cesium.Color.CYAN.withAlpha(0.3),
-                        strokeWidth: 1,
-                    });
-                })
-                .then(ds => {
-                    if (!ds) return;
-                    ds.entities.values.forEach(e => {
-                        if (e.polygon) {
-                            e.polygon.height = 0;
-                            e.polygon.extrudedHeight = 2000; // Replace with logic if needed
-                            e.polygon.outline = false;
-                        }
-                    });
-                    viewerInstance.dataSources.add(ds);
+                    const color = colorMap[classType];
+
+                    if (e.polygon) {
+                        // Fixed approximate vertical dimensions by class
+                        const lower = 0;
+                        const upper =
+                            classType === "CLASS_B"
+                                ? 3000
+                                : classType === "CLASS_C"
+                                    ? 2000
+                                    : classType === "CLASS_D"
+                                        ? 1200
+                                        : 1000;
+
+                        e.polygon.material = new Cesium.ColorMaterialProperty(color);
+                        e.polygon.outline = new Cesium.ConstantProperty(true);
+                        e.polygon.outlineColor = new Cesium.ConstantProperty(
+                            Cesium.Color.WHITE.withAlpha(0.5)
+                        );
+                        e.polygon.height = new Cesium.ConstantProperty(lower);
+                        e.polygon.extrudedHeight = new Cesium.ConstantProperty(upper);
+                    }
                 });
-        });
+
+                ds.entities.values.forEach(entity => airspaceSource.entities.add(entity));
+                viewerInstance.dataSources.add(airspaceSource);
+
+                viewerInstance.zoomTo(airspaceSource);
+            });
 
         setTrackedEntity(entity);
         setViewer(viewerInstance);

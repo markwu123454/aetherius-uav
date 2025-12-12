@@ -6,7 +6,7 @@ type Status = {
     level: "info" | "warn" | "error";
 };
 
-export default function TopStrip() {
+export default function KPI() {
     // ─── pull in the three flags from your new TelemetryContext ───────────────
 
     const [blink, setBlink] = useState(false);
@@ -60,7 +60,7 @@ export default function TopStrip() {
     return (
         <div
             className={`
-        fixed top-0 left-0 w-full h-6
+        h-6 w-full
         ${bgColor} text-zinc-400 text-xs font-mono px-4
         flex items-center gap-4 z-50 border-b border-zinc-700
         transition-colors

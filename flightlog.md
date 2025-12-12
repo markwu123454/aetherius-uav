@@ -1,0 +1,4 @@
+| Date    | Flight # | Goal                                                        | Result                                       | Comments                                          | 
+|---------|----------|-------------------------------------------------------------|----------------------------------------------|---------------------------------------------------|
+| 25/7/11 | 1        | Demonstrate air worthiness of aircraft                      | <span style="color:red"><b>Failed</b></span> | Too heavy, resulting in crash, removed 5v battery |
+| 25/7/   | 1        | Demonstrate that the aircraft is capable of generating lift | PENDING                                      | --                                                |

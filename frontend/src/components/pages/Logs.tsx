@@ -1,5 +1,4 @@
 import {useEffect, useRef, useState} from "react";
-import PageContainer from "@/components/ui/PageContainer";
 import {useRealTime} from "@/lib/RealTimeContext";
 import {shouldDisplayLog, formatLogEntry, logEntryClasses, type LogFilterOptions} from "@/lib/LogUtils";
 import rawLogsTemplate from "../../../../logs_template.json";
@@ -86,90 +85,88 @@ export default function Logs() {
         });
 
     return (
-        <PageContainer>
-            <div className="h-full w-full px-6 py-4">
-                <div className="flex gap-4 mb-4 text-sm text-zinc-200 items-center">
-                    <h1 className="text-xl font-bold text-zinc-200">Logs</h1>
+        <div className="h-full w-full flex flex-col overflow-hidden p-5">
+            <div className="flex gap-4 mb-4 text-sm text-zinc-200 items-center shrink-0">
+                <h1 className="text-xl font-bold text-zinc-200">Logs</h1>
 
-                    <input
-                        type="text"
-                        placeholder="Search log ID..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value.toUpperCase())}
-                        className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500"
-                        maxLength={6}
-                    />
+                <input
+                    type="text"
+                    placeholder="Search log ID..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value.toUpperCase())}
+                    className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500"
+                    maxLength={6}
+                />
 
-                    {/* Category Filter */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline">
-                                Category{filterOptions.categories.length ? ` (${filterOptions.categories.length})` : ''}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48">
-                            {Object.entries(categoryNames).map(([code, label]) => (
-                                <div key={code} className="flex items-center p-1">
-                                    <Checkbox
-                                        checked={filterOptions.categories.includes(code)}
-                                        onCheckedChange={() => handleCheckboxChange('categories', code)}
-                                    />
-                                    <span className="ml-2 text-sm">{label}</span>
-                                </div>
-                            ))}
-                        </PopoverContent>
-                    </Popover>
+                {/* Category Filter */}
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline">
+                            Category{filterOptions.categories.length ? ` (${filterOptions.categories.length})` : ''}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 bg-zinc-900 border-zinc-700 border-2">
+                        {Object.entries(categoryNames).map(([code, label]) => (
+                            <div key={code} className="flex items-center p-1">
+                                <Checkbox
+                                    checked={filterOptions.categories.includes(code)}
+                                    onCheckedChange={() => handleCheckboxChange('categories', code)}
+                                />
+                                <span className="ml-2 text-sm text-zinc-400">{label}</span>
+                            </div>
+                        ))}
+                    </PopoverContent>
+                </Popover>
 
-                    {/* Severity Filter */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline">
-                                Severity{filterOptions.severity.length ? ` (${filterOptions.severity.length})` : ''}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48">
-                            {Object.entries(severityNames).map(([code, label]) => (
-                                <div key={code} className="flex items-center p-1">
-                                    <Checkbox
-                                        checked={filterOptions.severity.includes(code)}
-                                        onCheckedChange={() => handleCheckboxChange('severity', code)}
-                                    />
-                                    <span className="ml-2 text-sm">{label}</span>
-                                </div>
-                            ))}
-                        </PopoverContent>
-                    </Popover>
+                {/* Severity Filter */}
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline">
+                            Severity{filterOptions.severity.length ? ` (${filterOptions.severity.length})` : ''}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 bg-zinc-900 border-zinc-700 border-2">
+                        {Object.entries(severityNames).map(([code, label]) => (
+                            <div key={code} className="flex items-center p-1">
+                                <Checkbox
+                                    checked={filterOptions.severity.includes(code)}
+                                    onCheckedChange={() => handleCheckboxChange('severity', code)}
+                                />
+                                <span className="ml-2 text-sm text-zinc-400">{label}</span>
+                            </div>
+                        ))}
+                    </PopoverContent>
+                </Popover>
 
-                    {/* Importance Filter */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline">
-                                Importance{filterOptions.importance.length ? ` (${filterOptions.importance.length})` : ''}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48">
-                            {Object.entries(importanceNames).map(([code, label]) => (
-                                <div key={code} className="flex items-center p-1">
-                                    <Checkbox
-                                        checked={filterOptions.importance.includes(code)}
-                                        onCheckedChange={() => handleCheckboxChange('importance', code)}
-                                    />
-                                    <span className="ml-2 text-sm">{label}</span>
-                                </div>
-                            ))}
-                        </PopoverContent>
-                    </Popover>
-                </div>
-
-                <div
-                    ref={logContainerRef}
-                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-y-auto h-[calc(100%-54px)] scrollbar-dark text-sm font-mono text-zinc-300 flex-1 flex-col justify-end space-y-1"
-                >
-                    {displayed.length ? displayed : (
-                        <p className="italic text-zinc-500">No logs match filters</p>
-                    )}
-                </div>
+                {/* Importance Filter */}
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline">
+                            Importance{filterOptions.importance.length ? ` (${filterOptions.importance.length})` : ''}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 bg-zinc-900 border-zinc-700 border-2">
+                        {Object.entries(importanceNames).map(([code, label]) => (
+                            <div key={code} className="flex items-center p-1">
+                                <Checkbox
+                                    checked={filterOptions.importance.includes(code)}
+                                    onCheckedChange={() => handleCheckboxChange('importance', code)}
+                                />
+                                <span className="ml-2 text-sm text-zinc-400">{label}</span>
+                            </div>
+                        ))}
+                    </PopoverContent>
+                </Popover>
             </div>
-        </PageContainer>
+
+            <div
+                ref={logContainerRef}
+                className="flex-1 overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-lg p-4 scrollbar-dark text-sm font-mono text-zinc-300 space-y-1"
+            >
+                {displayed.length ? displayed : (
+                    <p className="italic text-zinc-500">No logs match filters</p>
+                )}
+            </div>
+        </div>
     );
 }

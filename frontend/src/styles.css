@@ -46,3 +46,9 @@ input, textarea {
   -ms-user-select: text;
   user-select: text;
 }
+
+/* styles.css */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
